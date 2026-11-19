@@ -1,0 +1,62 @@
+{
+    "card": {
+        "name": "Map timeline",
+        "description": "Radar, its forecast, clouds, lightning and other map layers live, or played on one timeline"
+    },
+    "config": {
+        "invalid_sources": "Invalid configuration. sources must be a list of the map layers to draw.",
+        "invalid_zone": "Invalid zone. \"{value}\" isn't a zone such as zone.home.",
+        "invalid_zoom": "Invalid zoom. {name} must be a number from 0 to {max}.",
+        "invalid_map_style": "Invalid map style. map_style must be one of {values}.",
+        "invalid_map_height": "Invalid height. map_height must be a number of pixels, at least 200.",
+        "invalid_speed": "Invalid speed. speed must be the minutes played in a second, greater than 0.",
+        "invalid_type": "Invalid source {n}. type must be one of {values}.",
+        "invalid_url": "Invalid source {n}. url must be the address of its service, starting with https:// or http://.",
+        "invalid_layer": "Invalid source {n}. layer must be the name of a layer of its service.",
+        "invalid_history_minutes": "Invalid source {n}. history_minutes must be a number of minutes, 0 or more.",
+        "invalid_opacity": "Invalid source {n}. opacity must be a number greater than 0 and at most 1.",
+        "invalid_legend": "Invalid source {n}. legend must be false, or the address of a legend image.",
+        "invalid_stale_steps": "Invalid source {n}. stale_steps must be a number, at least 1.",
+        "invalid_step_minutes": "Invalid source {n}. step_minutes must be a number of minutes, at least 1.",
+        "invalid_row_step": "Invalid rounding. row_step must be full or half."
+    },
+    "bar": {
+        "live": "Now",
+        "updated": "Updated {time}",
+        "now": "now",
+        "ago": "{n} min ago",
+        "ahead": "forecast +{n} min",
+        "window": "{from}–{to}, {length}",
+        "no_sources": "No map layers yet. Add them under sources in the card's settings."
+    },
+    "age": {
+        "minutes": "{n} min",
+        "hours": "{h} h",
+        "hours_minutes": "{h} h {m} min"
+    },
+    "chip": {
+        "only_ahead": "forecast only",
+        "loading": "loading",
+        "failed": "not available",
+        "stale": "No new picture in {age}",
+        "error": "Couldn't be read. {reason}"
+    },
+    "controls": {
+        "play": "Play",
+        "pause": "Pause",
+        "back_live": "Back to now",
+        "legend": "Legends",
+        "region": "Whole region",
+        "local": "Near home"
+    },
+    "map_error": {
+        "webgl": "This browser can't draw the map, as it has no WebGL 2.",
+        "tiles": "Home Assistant's map tiles aren't available. The card needs Home Assistant 2026.9 or newer.",
+        "style": "The map couldn't be loaded. Check the errors in the browser's console."
+    },
+    "gestures": {
+        "windows": "Use Ctrl + scroll to zoom the map",
+        "mac": "Use ⌘ + scroll to zoom the map",
+        "mobile": "Use two fingers to move the map"
+    }
+}

@@ -1,0 +1,51 @@
+{
+    "name": "map-timeline-card",
+    "version": "1.0.0",
+    "description": "Home Assistant dashboard card that plays map layers on one timeline: radar, its forecast, clouds, lightning and anything else in a standard format, on Home Assistant's own map",
+    "keywords": [
+        "home-assistant",
+        "homeassistant",
+        "hass",
+        "lovelace",
+        "custom-cards",
+        "map",
+        "radar",
+        "weather",
+        "wms",
+        "maplibre"
+    ],
+    "type": "module",
+    "private": true,
+    "license": "MIT",
+    "repository": "git@github.com:jesmak/map-timeline-card.git",
+    "engines": {
+        "node": ">=22.13"
+    },
+    "scripts": {
+        "build": "node scripts/build.mjs",
+        "typecheck": "tsc",
+        "lint": "eslint .",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build"
+    },
+    "dependencies": {
+        "@versatiles/style": "^7.1.0",
+        "lit": "^3.3.3",
+        "maplibre-gl": "^6.16.0"
+    },
+    "devDependencies": {
+        "@eslint/compat": "^2.1.1",
+        "@eslint/js": "^10.0.1",
+        "esbuild": "^0.28.2",
+        "eslint": "^10.14.0",
+        "happy-dom": "^21.0.1",
+        "prettier": "^3.9.10",
+        "typescript": "~6.0.3",
+        "typescript-eslint": "^8.72.1",
+        "vite": "^8.3.5",
+        "vitest": "^5.0.5"
+    }
+}

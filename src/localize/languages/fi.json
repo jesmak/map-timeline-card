@@ -1,0 +1,62 @@
+{
+    "card": {
+        "name": "Kartan aikajana",
+        "description": "Sadetutka, sen ennuste, pilvet, salamat ja muut karttatasot reaaliajassa tai yhdellä aikajanalla toistettuna"
+    },
+    "config": {
+        "invalid_sources": "Virheelliset asetukset. sources on lista piirrettävistä karttatasoista.",
+        "invalid_zone": "Virheellinen vyöhyke. \"{value}\" ei ole vyöhyke, kuten zone.home.",
+        "invalid_zoom": "Virheellinen zoomaus. {name} on luku 0–{max}.",
+        "invalid_map_style": "Virheellinen kartan tyyli. map_style on jokin näistä {values}.",
+        "invalid_map_height": "Virheellinen korkeus. map_height on pikseleinä, vähintään 200.",
+        "invalid_speed": "Virheellinen nopeus. speed on sekunnissa toistettavat minuutit, enemmän kuin 0.",
+        "invalid_type": "Virheellinen lähde {n}. type on jokin näistä {values}.",
+        "invalid_url": "Virheellinen lähde {n}. url on palvelun osoite, joka alkaa https:// tai http://.",
+        "invalid_layer": "Virheellinen lähde {n}. layer on palvelun karttatason nimi.",
+        "invalid_history_minutes": "Virheellinen lähde {n}. history_minutes on minuutteina, 0 tai enemmän.",
+        "invalid_opacity": "Virheellinen lähde {n}. opacity on luku, enemmän kuin 0 ja enintään 1.",
+        "invalid_legend": "Virheellinen lähde {n}. legend on false tai selitekuvan osoite.",
+        "invalid_stale_steps": "Virheellinen lähde {n}. stale_steps on luku, vähintään 1.",
+        "invalid_step_minutes": "Virheellinen lähde {n}. step_minutes on minuutteina, vähintään 1.",
+        "invalid_row_step": "Virheellinen pyöristys. row_step on full tai half."
+    },
+    "bar": {
+        "live": "Nyt",
+        "updated": "Päivitetty {time}",
+        "now": "nyt",
+        "ago": "{n} min sitten",
+        "ahead": "ennuste +{n} min",
+        "window": "{from}–{to}, {length}",
+        "no_sources": "Ei vielä karttatasoja. Lisää ne kortin asetuksiin kohtaan sources."
+    },
+    "age": {
+        "minutes": "{n} min",
+        "hours": "{h} h",
+        "hours_minutes": "{h} h {m} min"
+    },
+    "chip": {
+        "only_ahead": "vain ennuste",
+        "loading": "ladataan",
+        "failed": "ei saatavilla",
+        "stale": "Ei uutta kuvaa {age} aikana",
+        "error": "Ei saatu luettua. {reason}"
+    },
+    "controls": {
+        "play": "Toista",
+        "pause": "Pysäytä",
+        "back_live": "Takaisin nykyhetkeen",
+        "legend": "Selitteet",
+        "region": "Koko alue",
+        "local": "Kodin lähellä"
+    },
+    "map_error": {
+        "webgl": "Tämä selain ei pysty piirtämään karttaa, koska se ei tue WebGL 2:ta.",
+        "tiles": "Home Assistantin karttatiilet eivät ole saatavilla. Kortti tarvitsee Home Assistantin version 2026.9 tai uudemman.",
+        "style": "Karttaa ei saatu ladattua. Tarkista virheet selaimen konsolista."
+    },
+    "gestures": {
+        "windows": "Zoomaa karttaa vierittämällä Ctrl-näppäin pohjassa",
+        "mac": "Zoomaa karttaa vierittämällä ⌘-näppäin pohjassa",
+        "mobile": "Siirrä karttaa kahdella sormella"
+    }
+}
