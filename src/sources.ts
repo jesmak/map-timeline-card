@@ -119,7 +119,10 @@ async function loadRainViewer(options: SourceOptions, now: number): Promise<Load
 async function loadGeoJson(options: SourceOptions): Promise<LoadedFeatures> {
     return {
         kind: "features",
-        data: readGeoJson(parseJson(await fetchText(options.url), "the answer isn't GeoJSON"), options.timeProperty),
+        // Revalidated every time: Home Assistant serves a file of /config/www with a month's max-age, so a file a user's
+        // script rewrites would otherwise stay as the browser first saw it. Its service worker still answers from its own
+        // cache while it fetches the new file, so such a file shows one read late.
+        data: readGeoJson(parseJson(await fetchText(options.url, "no-cache"), "the answer isn't GeoJSON"), options.timeProperty),
         step: options.stepMinutes * 60,
         legend: typeof options.legend === "string" ? options.legend : null,
         attribution: options.attribution,
@@ -141,8 +144,8 @@ function parseJson(text: string, error: string): unknown {
     }
 }
 
-async function fetchText(url: string): Promise<string> {
-    const response = await fetch(url);
+async function fetchText(url: string, cache: RequestCache = "default"): Promise<string> {
+    const response = await fetch(url, { cache });
     if (!response.ok) throw new Error(`the server answered ${response.status}`);
     return response.text();
 }
