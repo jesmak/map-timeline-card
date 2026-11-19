@@ -3,7 +3,8 @@
  * its own. A frame's layer stays after it is shown, hidden, so playing a loop again doesn't fetch its tiles again.
  */
 import { AttributionControl, Map as MapLibreMap, Marker, setWorkerUrl } from "maplibre-gl";
-import type { StyleSpecification } from "maplibre-gl";
+import type { GeoJSONSource, StyleSpecification } from "maplibre-gl";
+import type { Feature, FeatureCollection } from "geojson";
 // The worker is carried as text and started from a blob, so the card stays one file, as HACS installs it.
 import workerSource from "maplibre-gl/dist/maplibre-gl-worker.mjs?raw";
 
@@ -30,12 +31,23 @@ export interface DrawnPoint {
     opacity: number;
 }
 
+/** A line or an area to draw, in the colour given where its simplestyle properties name none. */
+export interface DrawnShape {
+    feature: Feature;
+    color: string;
+}
+
 export interface MapView {
     center: [number, number];
     zoom: number;
 }
 
 const FRAME_KEY = /^s\d+-\d+$/;
+
+/** Every source's lines and areas are one GeoJSON source, drawn above the frames and under the base map's labels. */
+const SHAPES = "shapes";
+const SHAPE_FILL = "shapes-fill";
+const SHAPE_LINE = "shapes-line";
 
 /** A frame's name on the map: its source's place in the config and its time. */
 export function frameKey(source: number, time: number): string {
@@ -67,6 +79,8 @@ export class TimelineMap {
     private readonly frames = new Map<string, FrameEntry>();
     private shown = new Set<string>();
     private readonly points = new Map<string, Marker>();
+    private shapes: FeatureCollection = { type: "FeatureCollection", features: [] };
+    private drawnShapes: DrawnShape[] = [];
     /** The frames last asked to be shown, some of which may still be loading. */
     private wanted: DrawnFrame[] = [];
     private attribution?: AttributionControl;
@@ -154,6 +168,7 @@ export class TimelineMap {
         const loaded = new Promise<void>((resolve) => {
             map.on("style.load", () => {
                 this.styleReady = true;
+                this.addShapes();
                 for (const { frame } of this.frames.values()) this.addFrame(frame);
                 // They come back hidden, and what is shown is decided again rather than waiting for their tiles' events.
                 this.shown = new Set();
@@ -298,6 +313,25 @@ export class TimelineMap {
         }
     }
 
+    /**
+     * Draws these lines and areas, replacing those drawn before. They are handed to MapLibre only when they change, as
+     * playing moves the time far more often than it changes which features are shown. A source read again gives new
+     * features, so they are compared as objects rather than by their keys.
+     */
+    setShapes(shapes: DrawnShape[]): void {
+        const before = this.drawnShapes;
+        const same =
+            shapes.length === before.length &&
+            shapes.every((shape, n) => shape.feature === before[n].feature && shape.color === before[n].color);
+        if (same) return;
+        this.drawnShapes = shapes;
+        this.shapes = {
+            type: "FeatureCollection",
+            features: shapes.map((shape) => ({ ...shape.feature, properties: { ...shape.feature.properties, _color: shape.color } })),
+        };
+        if (this.styleReady) (this.map?.getSource(SHAPES) as GeoJSONSource | undefined)?.setData(this.shapes);
+    }
+
     /** Credits as HTML, behind MapLibre's info button, which starts closed. The base map adds its own to them. */
     setAttribution(credits: string[]): void {
         const text = credits.join(" · ");
@@ -338,6 +372,44 @@ export class TimelineMap {
         this.wanted = [];
     }
 
+    /**
+     * The shapes' source and layers, under the base map's first label. A shape's own simplestyle colours win, and one that
+     * names none, or names one MapLibre can't read, is drawn in its source's. Opacities and widths default as simplestyle's.
+     */
+    private addShapes(): void {
+        const map = this.map!;
+        if (map.getSource(SHAPES)) return;
+        const label = map.getStyle().layers.find((layer) => layer.type === "symbol")?.id;
+        map.addSource(SHAPES, { type: "geojson", data: this.shapes });
+        map.addLayer(
+            {
+                id: SHAPE_FILL,
+                type: "fill",
+                source: SHAPES,
+                filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
+                paint: {
+                    "fill-color": ["to-color", ["get", "fill"], ["get", "_color"]],
+                    "fill-opacity": ["number", ["get", "fill-opacity"], 0.6],
+                },
+            },
+            label,
+        );
+        map.addLayer(
+            {
+                id: SHAPE_LINE,
+                type: "line",
+                source: SHAPES,
+                filter: ["match", ["geometry-type"], ["LineString", "MultiLineString", "Polygon", "MultiPolygon"], true, false],
+                paint: {
+                    "line-color": ["to-color", ["get", "stroke"], ["get", "_color"]],
+                    "line-width": ["number", ["get", "stroke-width"], 2],
+                    "line-opacity": ["number", ["get", "stroke-opacity"], 1],
+                },
+            },
+            label,
+        );
+    }
+
     /** Adds a frame's layer hidden, under the base map's labels and in its source's place among the others. */
     private addFrame(frame: DrawnFrame): void {
         const map = this.map!;
@@ -365,14 +437,14 @@ export class TimelineMap {
         );
     }
 
-    /** The layer a source's frames go under: the lowest frame of a later source, or else the base map's first label. */
+    /** The layer a source's frames go under: the lowest frame of a later source, or else the shapes, under the labels. */
     private beforeId(source: number): string | undefined {
         const layers = this.map!.getStyle().layers;
         const later = layers.find((layer) => {
             const entry = this.frames.get(layer.id);
             return entry !== undefined && entry.frame.source > source;
         });
-        return later?.id ?? layers.find((layer) => layer.type === "symbol")?.id;
+        return later?.id ?? SHAPE_FILL;
     }
 
     private dropUnused(): void {

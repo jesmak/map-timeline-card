@@ -21,8 +21,8 @@ const states: Record<string, HassEntity> = {
 describe("geoEvents", () => {
     it("picks a source's entities by their source attribute, with their position and time", () => {
         expect(geoEvents(states, "blitzortung", "publication_date")).toEqual([
-            { key: "geo_location.strike_1", position: [25.5, 61.5], time: Date.UTC(2026, 10, 19, 17, 5) / 1000 },
-            { key: "geo_location.no_time", position: [24, 60], time: null },
+            { key: "geo_location.strike_1", position: [25.5, 61.5], time: Date.UTC(2026, 10, 19, 17, 5) / 1000, color: "" },
+            { key: "geo_location.no_time", position: [24, 60], time: null, color: "" },
         ]);
     });
 
@@ -40,7 +40,7 @@ describe("geoEvents", () => {
 });
 
 describe("eventOpacity", () => {
-    const event: GeoEvent = { key: "a", position: [0, 0], time: 1000 };
+    const event: GeoEvent = { key: "a", position: [0, 0], time: 1000, color: "" };
 
     it("is full at the event's time and fades linearly to the faded strength at the end of its visibility", () => {
         expect(eventOpacity(event, 1000, 1800, false)).toBe(1);
@@ -54,8 +54,14 @@ describe("eventOpacity", () => {
     });
 
     it("shows an event without a time only live", () => {
-        const timeless: GeoEvent = { key: "b", position: [0, 0], time: null };
+        const timeless: GeoEvent = { key: "b", position: [0, 0], time: null, color: "" };
         expect(eventOpacity(timeless, 5000, 1800, true)).toBe(1);
         expect(eventOpacity(timeless, 5000, 1800, false)).toBe(0);
+    });
+
+    it("shows every event of a source without times at every moment, at full strength", () => {
+        const timeless: GeoEvent = { key: "b", position: [0, 0], time: null, color: "" };
+        expect(eventOpacity(timeless, 5000, 1800, false, false)).toBe(1);
+        expect(eventOpacity(event, 0, 1800, false, false)).toBe(1);
     });
 });

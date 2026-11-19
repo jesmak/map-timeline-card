@@ -8,14 +8,15 @@ import { property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import maplibreCss from "maplibre-gl/dist/maplibre-gl.css?raw";
 
-import { eventOpacity, geoEvents, type GeoEvent } from "./geolocation";
+import type { GeoJsonData } from "./geojson";
+import { eventOpacity, geoEvents } from "./geolocation";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows } from "./height";
 import { browserLanguage, translate } from "./localize/localize";
-import { frameKey, TimelineMap, type DrawnFrame, type DrawnPoint, type MapView } from "./map";
+import { frameKey, TimelineMap, type DrawnFrame, type DrawnPoint, type DrawnShape, type MapView } from "./map";
 import { ensureToken, MapError } from "./map-tiles";
 import { readThemeColors } from "./map-theme";
-import { parseOptions, type CardOptions } from "./options";
+import { isFeatureSource, parseOptions, type CardOptions, type SourceOptions } from "./options";
 import { fillLimit, filledHeight, filledStyle, validRowStep, type RowStepConfig } from "./rows";
 import { loadSource, type LoadedSource } from "./sources";
 import { buildTimeline, defaultWindow, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
@@ -23,6 +24,8 @@ import { buildTimeline, defaultWindow, frameAt, frameFor, MIN_STEP, type Timelin
 /** Replaced at build time with the version in package.json. */
 declare const __CARD_VERSION__: string;
 
+/** Home Assistant's own primary colour, for a theme that sets none. */
+const DEFAULT_PRIMARY = "#03a9f4";
 /** The card's border, above and below. */
 const BORDER_PX = 2;
 /**
@@ -257,10 +260,10 @@ export class MapTimelineCard extends LitElement {
                 </div>
                 ${now > first && now < first + span ? html`<span class="now-tick" style="left:${at(now)}"></span>` : nothing}
                 ${this.options!.sources.flatMap((source, i) =>
-                    this.enabled[i] && source.type === "geo_location" && source.timelineMarks
-                        ? this.events(i)
-                              .filter((event) => event.time !== null && event.time >= first && event.time <= first + span)
-                              .map((event) => html`<span class="mark" style="left:${at(event.time!)};${colorStyle(source.color)}"></span>`)
+                    this.enabled[i] && isFeatureSource(source.type) && source.timelineMarks
+                        ? this.featureTimes(i)
+                              .filter((time) => time >= first && time <= first + span)
+                              .map((time) => html`<span class="mark" style="left:${at(time)};${colorStyle(source.color)}"></span>`)
                         : [],
                 )}
                 <span class="handle" data-handle="0" style="left:${at(start)}"></span>
@@ -287,21 +290,23 @@ export class MapTimelineCard extends LitElement {
                     note = this.text("chip.failed");
                     title = this.text("chip.error", { reason: state.error });
                     warn = true;
-                } else if (on && this.mode === "live" && source.type === "geo_location") {
-                    // Points have no frames to fall behind on, so their chip shows only how old the newest is.
-                    const times = this.events(i).flatMap((event) => (event.time === null ? [] : [event.time]));
-                    if (times.length) note = this.age(now - Math.max(...times));
+                } else if (on && this.mode === "live" && isFeatureSource(source.type)) {
+                    // Features have no frames to fall behind on, so their chip shows only how old the newest is.
+                    const times = this.featureTimes(i);
+                    if (source.type === "geojson" && !state.loaded) note = this.text("chip.loading");
+                    else if (times.length) note = this.age(now - Math.max(...times));
                 } else if (on && this.mode === "live") {
-                    if (!state.loaded) {
+                    const loaded = state.loaded;
+                    if (loaded?.kind !== "images") {
                         note = this.text("chip.loading");
                     } else {
-                        const newest = frameAt(state.loaded.frames, now);
+                        const newest = frameAt(loaded.frames, now);
                         if (newest === null) {
                             note = this.text("chip.only_ahead");
                         } else {
                             note = this.age(now - newest);
                             const quiet = Date.now() - state.advancedAt;
-                            if (quiet > source.staleSteps * state.loaded.step * 1000) {
+                            if (quiet > source.staleSteps * loaded.step * 1000) {
                                 warn = true;
                                 title = this.text("chip.stale", { age: this.age(quiet / 1000) });
                             }
@@ -357,12 +362,13 @@ export class MapTimelineCard extends LitElement {
 
     /** The timeline over the sources that are on and have been read. */
     private timeline(): Timeline | null {
-        const images = this.sources.flatMap((source, i) => (this.enabled[i] && source.loaded ? [source.loaded] : []));
-        // A point source reaches from its history to now, past an image source's newest frame, which lags behind now, so
-        // the newest points are played too. Its step counts only without image sources, as points have no frames of their own.
+        const images = this.sources.flatMap((source, i) => (this.enabled[i] && source.loaded?.kind === "images" ? [source.loaded] : []));
+        // A feature source with times reaches from its history to now, past an image source's newest frame, which lags
+        // behind now, so the newest features are played too. Its step counts only without image sources, as features have
+        // no frames of their own.
         const now = Date.now() / 1000;
         const points = this.options!.sources.flatMap((source, i) =>
-            this.enabled[i] && source.type === "geo_location"
+            this.enabled[i] && timed(source)
                 ? [{ frames: [now - source.historyMinutes * 60, now], step: images.length ? Infinity : source.stepMinutes * 60 }]
                 : [],
         );
@@ -379,33 +385,48 @@ export class MapTimelineCard extends LitElement {
         const frames: DrawnFrame[] = [];
         const ahead: DrawnFrame[] = [];
         this.sources.forEach((source, i) => {
-            if (!this.enabled[i] || !source.loaded) return;
-            const frame = frameFor(source.loaded.frames, time, now);
+            const loaded = source.loaded;
+            if (!this.enabled[i] || loaded?.kind !== "images") return;
+            const frame = frameFor(loaded.frames, time, now);
             const options = this.options!.sources[i];
             const drawn = (at: number): DrawnFrame => ({
                 key: frameKey(i, at),
                 source: i,
-                url: source.loaded!.url(at),
+                url: loaded.url(at),
                 opacity: options.opacity,
-                maxZoom: options.maxZoom,
+                maxZoom: options.maxZoom ?? loaded.maxZoom,
             });
             if (frame !== null) frames.push(drawn(frame));
-            const coming = next === undefined ? null : frameFor(source.loaded.frames, next, now);
+            const coming = next === undefined ? null : frameFor(loaded.frames, next, now);
             if (coming !== null && coming !== frame) ahead.push(drawn(coming));
         });
         this.map.show(frames, ahead);
 
         const points: DrawnPoint[] = [];
+        const shapes: DrawnShape[] = [];
+        const live = this.mode === "live";
+        let primary = "";
         this.options.sources.forEach((source, i) => {
-            if (!this.enabled[i] || source.type !== "geo_location") return;
-            for (const event of this.events(i)) {
-                const opacity = eventOpacity(event, time, source.visibleMinutes * 60, this.mode === "live");
+            if (!this.enabled[i] || !isFeatureSource(source.type)) return;
+            const visibleFor = source.visibleMinutes * 60;
+            const features = this.features(i);
+            for (const event of features.points) {
+                const opacity = eventOpacity(event, time, visibleFor, live, timed(source));
                 if (opacity > 0) {
-                    points.push({ key: `${i}:${event.key}`, position: event.position, icon: source.icon, color: source.color, opacity });
+                    const color = event.color || source.color;
+                    points.push({ key: `${i}:${event.key}`, position: event.position, icon: source.icon, color, opacity });
                 }
+            }
+            // A shape doesn't fade, as one half faded would look half over. It is drawn in a colour MapLibre can read, so
+            // the theme's primary colour is looked up rather than given as a CSS variable.
+            for (const shape of features.shapes) {
+                if (eventOpacity(shape, time, visibleFor, live, timed(source)) === 0) continue;
+                primary ||= getComputedStyle(this).getPropertyValue("--primary-color").trim() || DEFAULT_PRIMARY;
+                shapes.push({ feature: shape.feature, color: source.color || primary });
             }
         });
         this.map.setPoints(points);
+        this.map.setShapes(shapes);
 
         this.map.setAttribution(
             this.options.sources.flatMap((source, i) => {
@@ -419,10 +440,20 @@ export class MapTimelineCard extends LitElement {
         );
     }
 
-    /** A geo_location source's entities, as they are in Home Assistant now. */
-    private events(i: number): GeoEvent[] {
+    /** A feature source's points and shapes: a geo_location source's entities as they are in Home Assistant now, a GeoJSON source's as last read. */
+    private features(i: number): GeoJsonData {
         const source = this.options!.sources[i];
-        return this.hass ? geoEvents(this.hass.states, source.entitySource, source.timeAttribute) : [];
+        if (source.type === "geo_location") {
+            return { points: this.hass ? geoEvents(this.hass.states, source.entitySource, source.timeAttribute) : [], shapes: [] };
+        }
+        const loaded = this.sources[i]?.loaded;
+        return loaded?.kind === "features" ? loaded.data : { points: [], shapes: [] };
+    }
+
+    /** The times of a feature source's points and shapes, those that have one. */
+    private featureTimes(i: number): number[] {
+        const { points, shapes } = this.features(i);
+        return [...points, ...shapes].flatMap((feature) => (feature.time === null ? [] : [feature.time]));
     }
 
     private toggleSource(i: number): void {
@@ -501,8 +532,9 @@ export class MapTimelineCard extends LitElement {
             if (key !== this.sourcesKey) return;
             const step = this.timeline()?.step;
             const before = this.sources[i];
-            const newest = (frames: number[] | undefined) => frames?.[frames.length - 1];
-            const advanced = !before.loaded || newest(before.loaded.frames) !== newest(loaded.frames);
+            const newest = (source: LoadedSource | null) =>
+                source?.kind === "images" ? source.frames[source.frames.length - 1] : undefined;
+            const advanced = !before.loaded || newest(before.loaded) !== newest(loaded);
             this.sources = this.sources.map((source, j) =>
                 j === i ? { ...source, loaded, error: "", advancedAt: advanced ? Date.now() : source.advancedAt } : source,
             );
@@ -960,6 +992,11 @@ function previousOf(times: number[], time: number): number {
 
 function nextOf(times: number[], time: number): number {
     return times.find((candidate) => candidate > time) ?? time;
+}
+
+/** Whether a feature source's features have times: a geo_location entity's from its attribute, a GeoJSON feature's from its property. */
+function timed(source: SourceOptions): boolean {
+    return source.type === "geo_location" || (source.type === "geojson" && source.timeProperty !== "");
 }
 
 /** A colour of the user's own, or the theme's primary colour through the stylesheet. */

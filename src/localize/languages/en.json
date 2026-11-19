@@ -12,6 +12,7 @@
         "invalid_speed": "Invalid speed. speed must be the minutes played in a second, greater than 0.",
         "invalid_type": "Invalid source {n}. type must be one of {values}.",
         "invalid_url": "Invalid source {n}. url must be the address of its service, starting with https:// or http://.",
+        "invalid_xyz_url": "Invalid source {n}. url must be a tile address with {z}, {x} and {y} in it, and the time as {time:YYYYMMDDHHmm} or in another pattern.",
         "invalid_layer": "Invalid source {n}. layer must be the name of a layer of its service.",
         "invalid_rainviewer_layer": "Invalid source {n}. layer must be one of {values}.",
         "invalid_color_scheme": "Invalid source {n}. color_scheme must be the number of one of its server's colour schemes.",
@@ -24,6 +25,7 @@
         "invalid_legend": "Invalid source {n}. legend must be false, or the address of a legend image.",
         "invalid_stale_steps": "Invalid source {n}. stale_steps must be a number, at least 1.",
         "invalid_step_minutes": "Invalid source {n}. step_minutes must be a number of minutes, at least 1.",
+        "invalid_delay_minutes": "Invalid source {n}. delay_minutes must be a number of minutes, 0 or more.",
         "invalid_row_step": "Invalid rounding. row_step must be full or half."
     },
     "bar": {

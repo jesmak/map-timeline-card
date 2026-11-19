@@ -1,0 +1,158 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "generated": 1795122121000,
+        "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson",
+        "title": "USGS All Earthquakes, Past Day",
+        "status": 200,
+        "api": "2.8.2",
+        "count": 4
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "mag": 2.41,
+                "place": "42 km WSW of Olancha, CA",
+                "time": 1795121367500,
+                "updated": 1795122027610,
+                "tz": null,
+                "url": "https://earthquake.usgs.gov/earthquakes/eventpage/ci41363879",
+                "detail": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/ci41363879.geojson",
+                "felt": null,
+                "cdi": null,
+                "mmi": null,
+                "alert": null,
+                "status": "automatic",
+                "tsunami": 0,
+                "sig": 89,
+                "net": "ci",
+                "code": "41363879",
+                "ids": ",ci41363879,",
+                "sources": ",ci,",
+                "types": ",focal-mechanism,nearby-cities,origin,phase-data,scitech-link,",
+                "nst": 30,
+                "dmin": 0.103,
+                "rms": 0.18,
+                "gap": 73,
+                "magType": "ml",
+                "type": "earthquake",
+                "title": "M 2.4 - 42 km WSW of Olancha, CA"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-118.43917, 36.1375, 7.19]
+            },
+            "id": "ci41363879"
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "mag": 2.22,
+                "place": "5 km SE of Maria Antonia, Puerto Rico",
+                "time": 1795120386250,
+                "updated": 1795121083300,
+                "tz": null,
+                "url": "https://earthquake.usgs.gov/earthquakes/eventpage/pr71539578",
+                "detail": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/pr71539578.geojson",
+                "felt": null,
+                "cdi": null,
+                "mmi": null,
+                "alert": null,
+                "status": "reviewed",
+                "tsunami": 0,
+                "sig": 76,
+                "net": "pr",
+                "code": "71539578",
+                "ids": ",pr71539578,",
+                "sources": ",pr,",
+                "types": ",origin,phase-data,",
+                "nst": 8,
+                "dmin": 0.03723,
+                "rms": 0.06,
+                "gap": 176,
+                "magType": "md",
+                "type": "earthquake",
+                "title": "M 2.2 - 5 km SE of Maria Antonia, Puerto Rico"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-66.8511666666667, 17.949, 12.28]
+            },
+            "id": "pr71539578"
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "mag": 0.94,
+                "place": "8 km NW of The Geysers, CA",
+                "time": 1795119971320,
+                "updated": 1795120066347,
+                "tz": null,
+                "url": "https://earthquake.usgs.gov/earthquakes/eventpage/nc75468462",
+                "detail": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/nc75468462.geojson",
+                "felt": null,
+                "cdi": null,
+                "mmi": null,
+                "alert": null,
+                "status": "automatic",
+                "tsunami": 0,
+                "sig": 14,
+                "net": "nc",
+                "code": "75468462",
+                "ids": ",nc75468462,",
+                "sources": ",nc,",
+                "types": ",nearby-cities,origin,phase-data,",
+                "nst": 12,
+                "dmin": 0.007578,
+                "rms": 0.01,
+                "gap": 78,
+                "magType": "md",
+                "type": "earthquake",
+                "title": "M 0.9 - 8 km NW of The Geysers, CA"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-122.814002990723, 38.8303337097168, 2.15000009536743]
+            },
+            "id": "nc75468462"
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "mag": 2.9,
+                "place": "69 km E of Port Alsworth, Alaska",
+                "time": 1795119836618,
+                "updated": 1795120053446,
+                "tz": null,
+                "url": "https://earthquake.usgs.gov/earthquakes/eventpage/aka2026wyhwhm",
+                "detail": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/aka2026wyhwhm.geojson",
+                "felt": null,
+                "cdi": null,
+                "mmi": null,
+                "alert": null,
+                "status": "automatic",
+                "tsunami": 0,
+                "sig": 129,
+                "net": "ak",
+                "code": "a2026wyhwhm",
+                "ids": ",aka2026wyhwhm,",
+                "sources": ",ak,",
+                "types": ",origin,phase-data,",
+                "nst": 121,
+                "dmin": 0.1,
+                "rms": 0.7,
+                "gap": 53,
+                "magType": "ml",
+                "type": "earthquake",
+                "title": "M 2.9 - 69 km E of Port Alsworth, Alaska"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-153.06, 60.147, 135.9]
+            },
+            "id": "aka2026wyhwhm"
+        }
+    ],
+    "bbox": [-177.7237, -55.0035, -0.94999998807907, 172.8596, 66.928, 445.053]
+}

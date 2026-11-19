@@ -2,7 +2,7 @@
  * A WMS layer with a time dimension (WMS 1.3.0): its times, styles and legends from the capabilities, and its frames
  * as map tiles in Web Mercator.
  */
-import { parseTimeDimension, type TimeExtent } from "./time";
+import { isoTime, parseTimeDimension, type TimeExtent } from "./time";
 
 export interface WmsStyle {
     name: string;
@@ -18,14 +18,14 @@ export interface WmsLayer {
     attribution: string;
 }
 
-const XLINK = "http://www.w3.org/1999/xlink";
+export const XLINK = "http://www.w3.org/1999/xlink";
 
 /** The element's children with this name, whatever namespace the server writes them in. */
-function children(element: Element, name: string): Element[] {
+export function children(element: Element, name: string): Element[] {
     return [...element.children].filter((child) => child.localName === name);
 }
 
-function child(element: Element, name: string): Element | undefined {
+export function child(element: Element, name: string): Element | undefined {
     return children(element, name)[0];
 }
 
@@ -104,7 +104,7 @@ export function tileUrl(base: string, layer: string, style: string, time: number
         crs: "EPSG:3857",
         width: "256",
         height: "256",
-        time: new Date(time * 1000).toISOString().replace(".000Z", "Z"),
+        time: isoTime(time),
     });
     // MapLibre replaces the placeholder only when its braces are left as they are.
     return `${url}&bbox={bbox-epsg-3857}`;

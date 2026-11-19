@@ -751,22 +751,25 @@ var maplibre_gl_default = `.maplibregl-map{font:12px/20px Helvetica Neue,Arial,H
 // src/time.ts
 var MIN_STEP = 60;
 var DURATION = /^P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
-function parseDuration(text2) {
-  const match = DURATION.exec(text2.trim());
-  if (!match || text2.trim() === "P" || text2.trim().endsWith("T")) return null;
+function parseDuration(text3) {
+  const match = DURATION.exec(text3.trim());
+  if (!match || text3.trim() === "P" || text3.trim().endsWith("T")) return null;
   const [, days, hours, minutes, seconds] = match.map((part) => Number(part ?? 0));
   return Math.round(days * 86400 + hours * 3600 + minutes * 60 + seconds);
 }
-function parseTime(text2) {
-  const value = text2.trim();
+function parseTime(text3) {
+  const value = text3.trim();
   if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return null;
   const zoned = /T.*(Z|[+-]\d{2}:?\d{2})$/.test(value) || !value.includes("T") ? value : `${value}Z`;
   const ms2 = Date.parse(zoned);
   return Number.isNaN(ms2) ? null : Math.floor(ms2 / 1e3);
 }
-function parseTimeDimension(text2) {
+function isoTime(time) {
+  return new Date(time * 1e3).toISOString().replace(".000Z", "Z");
+}
+function parseTimeDimension(text3) {
   const extent = { times: [], ranges: [] };
-  for (const part of text2.split(",")) {
+  for (const part of text3.split(",")) {
     const value = part.trim();
     if (!value) continue;
     const pieces = value.split("/");
@@ -854,11 +857,12 @@ function geoEvents(states, source, timeAttribute) {
     if (source && state.attributes.source !== source) continue;
     const raw = state.attributes[timeAttribute];
     const time = typeof raw === "string" ? parseTime(raw) : typeof raw === "number" ? raw : null;
-    events.push({ key: id2, position: [longitude, latitude], time });
+    events.push({ key: id2, position: [longitude, latitude], time, color: "" });
   }
   return events;
 }
-function eventOpacity(event, at3, visibleFor, live) {
+function eventOpacity(event, at3, visibleFor, live, timed2 = true) {
+  if (!timed2) return 1;
   if (event.time === null) return live ? 1 : 0;
   const age = at3 - event.time;
   if (age < 0 || age > visibleFor) return 0;
@@ -901,6 +905,7 @@ var en_default = {
     invalid_speed: "Invalid speed. speed must be the minutes played in a second, greater than 0.",
     invalid_type: "Invalid source {n}. type must be one of {values}.",
     invalid_url: "Invalid source {n}. url must be the address of its service, starting with https:// or http://.",
+    invalid_xyz_url: "Invalid source {n}. url must be a tile address with {z}, {x} and {y} in it, and the time as {time:YYYYMMDDHHmm} or in another pattern.",
     invalid_layer: "Invalid source {n}. layer must be the name of a layer of its service.",
     invalid_rainviewer_layer: "Invalid source {n}. layer must be one of {values}.",
     invalid_color_scheme: "Invalid source {n}. color_scheme must be the number of one of its server's colour schemes.",
@@ -913,6 +918,7 @@ var en_default = {
     invalid_legend: "Invalid source {n}. legend must be false, or the address of a legend image.",
     invalid_stale_steps: "Invalid source {n}. stale_steps must be a number, at least 1.",
     invalid_step_minutes: "Invalid source {n}. step_minutes must be a number of minutes, at least 1.",
+    invalid_delay_minutes: "Invalid source {n}. delay_minutes must be a number of minutes, 0 or more.",
     invalid_row_step: "Invalid rounding. row_step must be full or half."
   },
   bar: {
@@ -971,6 +977,7 @@ var fi_default = {
     invalid_speed: "Virheellinen nopeus. speed on sekunnissa toistettavat minuutit, enemm\xE4n kuin 0.",
     invalid_type: "Virheellinen l\xE4hde {n}. type on jokin n\xE4ist\xE4 {values}.",
     invalid_url: "Virheellinen l\xE4hde {n}. url on palvelun osoite, joka alkaa https:// tai http://.",
+    invalid_xyz_url: "Virheellinen l\xE4hde {n}. url on tiilien osoite, jossa on {z}, {x} ja {y} sek\xE4 aika muodossa {time:YYYYMMDDHHmm} tai muussa muodossa.",
     invalid_layer: "Virheellinen l\xE4hde {n}. layer on palvelun karttatason nimi.",
     invalid_rainviewer_layer: "Virheellinen l\xE4hde {n}. layer on jokin n\xE4ist\xE4 {values}.",
     invalid_color_scheme: "Virheellinen l\xE4hde {n}. color_scheme on jonkin palvelimen v\xE4riskaalan numero.",
@@ -983,6 +990,7 @@ var fi_default = {
     invalid_legend: "Virheellinen l\xE4hde {n}. legend on false tai selitekuvan osoite.",
     invalid_stale_steps: "Virheellinen l\xE4hde {n}. stale_steps on luku, v\xE4hint\xE4\xE4n 1.",
     invalid_step_minutes: "Virheellinen l\xE4hde {n}. step_minutes on minuutteina, v\xE4hint\xE4\xE4n 1.",
+    invalid_delay_minutes: "Virheellinen l\xE4hde {n}. delay_minutes on minuutteina, 0 tai enemm\xE4n.",
     invalid_row_step: "Virheellinen py\xF6ristys. row_step on full tai half."
   },
   bar: {
@@ -27774,8 +27782,8 @@ function parseHex(digits, input) {
   }
   const short = size < 6;
   const channel = (index) => {
-    const text2 = short ? digits[index].repeat(2) : digits.slice(index * 2, index * 2 + 2);
-    return parseInt(text2, 16);
+    const text3 = short ? digits[index].repeat(2) : digits.slice(index * 2, index * 2 + 2);
+    return parseInt(text3, 16);
   };
   const hasAlpha = size === 4 || size === 8;
   return {
@@ -27785,17 +27793,17 @@ function parseHex(digits, input) {
   };
 }
 function parseColor(input) {
-  const text2 = input.trim();
-  if (text2.length === 0)
+  const text3 = input.trim();
+  if (text3.length === 0)
     throw new ColorParseError(input, "the string is empty");
-  const hex = HEX.exec(text2);
+  const hex = HEX.exec(text3);
   if (hex)
     return parseHex(hex[1], input);
-  if (text2.startsWith("#"))
+  if (text3.startsWith("#"))
     throw new ColorParseError(input, "a hex colour may only contain the digits 0-9 and a-f");
-  const call = CALL.exec(text2);
+  const call = CALL.exec(text3);
   if (!call) {
-    const keyword = text2.toLowerCase();
+    const keyword = text3.toLowerCase();
     if (keyword === "transparent")
       return { space: "srgb", coords: [0, 0, 0], alpha: 0 };
     if (keyword === "currentcolor") {
@@ -27846,8 +27854,8 @@ var CSS_PRECISION = {
 };
 var ALPHA_PRECISION = 3;
 function number(value, digits) {
-  const text2 = value.toFixed(digits);
-  return text2.includes(".") ? text2.replace(/0+$/, "").replace(/\.$/, "") : text2;
+  const text3 = value.toFixed(digits);
+  return text3.includes(".") ? text3.replace(/0+$/, "").replace(/\.$/, "") : text3;
 }
 function roundAlpha(alpha) {
   return Number(alpha.toFixed(ALPHA_PRECISION));
@@ -28270,10 +28278,10 @@ function checkColor(value, path) {
 function checkColors(value, keys, path) {
   if (value == null || typeof value !== "object")
     return;
-  const record2 = value;
+  const record3 = value;
   for (const key of keys) {
-    if (record2[key] != null)
-      checkColor(record2[key], `${path}.${key}`);
+    if (record3[key] != null)
+      checkColor(record3[key], `${path}.${key}`);
   }
 }
 var COLOR_KEYS = Object.fromEntries(colorOptionsKeys.map((key) => [key, true]));
@@ -28734,9 +28742,9 @@ function textNode(value, known, path) {
     checkStyleValue(key, value[key], `${path}.${key}`);
   return value;
 }
-function resolveText(text2, path = "text", defaults = DEFAULT_LABEL_STYLES) {
-  const root = textNode(text2, ["language", "languageStrict", "pitchAlignment", ...LABEL_STYLE_KEYS, ...Object.keys(TEXT_GROUPS), "addresses"], path);
-  const pitchAlignment = text2?.pitchAlignment ?? "map";
+function resolveText(text3, path = "text", defaults = DEFAULT_LABEL_STYLES) {
+  const root = textNode(text3, ["language", "languageStrict", "pitchAlignment", ...LABEL_STYLE_KEYS, ...Object.keys(TEXT_GROUPS), "addresses"], path);
+  const pitchAlignment = text3?.pitchAlignment ?? "map";
   if (!PITCH_ALIGNMENTS.includes(pitchAlignment)) {
     reportIssue({
       path: `${path}.pitchAlignment`,
@@ -28759,8 +28767,8 @@ function resolveText(text2, path = "text", defaults = DEFAULT_LABEL_STYLES) {
     return Object.fromEntries(LABEL_STYLE_KEYS.map((key) => [key, chain.find((node) => node?.[key] !== void 0)?.[key] ?? fallback[key]]));
   });
   return {
-    language: text2?.language ?? "local",
-    languageStrict: text2?.languageStrict ?? false,
+    language: text3?.language ?? "local",
+    languageStrict: text3?.languageStrict ?? false,
     pitchAlignment,
     ...styles
   };
@@ -28938,12 +28946,12 @@ function resolveSatellite(options) {
 function resolveSatelliteOverlay(content) {
   const path = "satellite.osmOverlay";
   checkKeys(content, { theme: true, layers: true, text: true, icon: true, colors: true, recolor: true, layerOpacity: true }, path);
-  const { theme, layers, text: text2, icon, colors, recolor, layerOpacity } = content;
+  const { theme, layers, text: text3, icon, colors, recolor, layerOpacity } = content;
   if (layerOpacity !== void 0 && typeof layerOpacity !== "boolean") {
     reportIssue({ path: `${path}.layerOpacity`, message: `expected a boolean, got ${describeValue(layerOpacity)}` });
   }
   return {
-    ...resolveOsmOverlay({ theme, layers, text: text2, icon, colors, recolor }, "gray", path, OVERLAY_LABEL_STYLES),
+    ...resolveOsmOverlay({ theme, layers, text: text3, icon, colors, recolor }, "gray", path, OVERLAY_LABEL_STYLES),
     layerOpacity: layerOpacity === true
   };
 }
@@ -28996,7 +29004,7 @@ function minimizeThemed(options, defaultsFor, defaultPalette, parts = {}) {
   const theme = resolveTheme(raw, defaultPalette);
   const defaults = defaultsFor(theme);
   const input = rest;
-  const text2 = defaults.text && minimizeText(input.text, defaults.text);
+  const text3 = defaults.text && minimizeText(input.text, defaults.text);
   const recolor = input.recolor;
   const tint = minimizeMix(recolor, "tint");
   const blend = minimizeMix(recolor, "blend");
@@ -29010,8 +29018,8 @@ function minimizeThemed(options, defaultsFor, defaultPalette, parts = {}) {
     ...parts.resolveUrls && { urls: void 0 }
   };
   const out = withoutDefaults(remaining, defaults, ENABLED) ?? {};
-  if (text2 !== void 0)
-    out.text = text2;
+  if (text3 !== void 0)
+    out.text = text3;
   if (tint !== void 0)
     out.recolor = { ...out.recolor, tint };
   if (blend !== void 0)
@@ -29030,10 +29038,10 @@ function minimizeMix(recolor, key) {
     return void 0;
   return sameValue(color2, resolveRecolor()[key].color) ? { amount } : { color: color2, amount };
 }
-function minimizeText(text2, defaults) {
-  if (text2 === void 0)
+function minimizeText(text3, defaults) {
+  if (text3 === void 0)
     return void 0;
-  const resolved = resolveText(text2, "text", defaults);
+  const resolved = resolveText(text3, "text", defaults);
   const root = {};
   for (const key of ["language", "languageStrict", "pitchAlignment"]) {
     if (resolved[key] !== defaults[key])
@@ -29666,11 +29674,11 @@ function scaleValue(value, factor) {
   return value;
 }
 function padValue(value, delta) {
-  const pad = (v3) => Math.max(0, v3 + delta);
+  const pad2 = (v3) => Math.max(0, v3 + delta);
   if (typeof value === "number")
-    return pad(value);
+    return pad2(value);
   if (Array.isArray(value) && value.every((v3) => typeof v3 === "number"))
-    return value.map(pad);
+    return value.map(pad2);
   if (Array.isArray(value) && value[0] === "interpolate") {
     for (let i7 = 4; i7 < value.length; i7 += 2)
       value[i7] = padValue(value[i7], delta);
@@ -29957,7 +29965,7 @@ var OWNED = {
   ],
   paint: ["text-halo-width", "text-halo-blur"]
 };
-function applyText(layer, group, text2) {
+function applyText(layer, group, text3) {
   if (layer.type !== "symbol")
     return;
   const layout = layer.layout;
@@ -29976,7 +29984,7 @@ function applyText(layer, group, text2) {
       throw new Error(`buildLayers: text layer "${layer.id}" sets "${key}", which the text options own`);
     }
   }
-  const style = topicOf(text2, topic);
+  const style = topicOf(text3, topic);
   const isLine = layout["symbol-placement"] === "line";
   layout["text-font"] = [style.font];
   if (style.scale !== 1 && layout["text-size"] != null) {
@@ -29986,7 +29994,7 @@ function applyText(layer, group, text2) {
     scaleSymbolSpacing(layout, style.spacing);
   else
     padForSpacing(layout, "text-padding", style.spacing);
-  if (text2.pitchAlignment === "viewport" && isLine)
+  if (text3.pitchAlignment === "viewport" && isLine)
     layout["text-pitch-alignment"] = "viewport";
   if (style.maxWidth !== MAPLIBRE_TEXT_DEFAULTS.maxWidth)
     layout["text-max-width"] = style.maxWidth;
@@ -30069,7 +30077,7 @@ function insert(root, path, id2) {
 }
 function buildGroupMaps(builds2) {
   const layers = {};
-  const text2 = {};
+  const text3 = {};
   for (const tagged of builds2) {
     for (const { layer, group } of tagged) {
       if (!group)
@@ -30078,7 +30086,7 @@ function buildGroupMaps(builds2) {
       const textField = layer.layout?.["text-field"];
       const topic = textTopic(group);
       if (layer.type === "symbol" && textField != null && topic)
-        insert(text2, topic, layer.id);
+        insert(text3, topic, layer.id);
     }
   }
   const transit = layers.transit;
@@ -30087,7 +30095,7 @@ function buildGroupMaps(builds2) {
     ...layers.markings ?? [],
     ...transit?.stops ?? []
   ];
-  return { layers: deepFreeze(layers), text: deepFreeze(text2) };
+  return { layers: deepFreeze(layers), text: deepFreeze(text3) };
 }
 var deepFreeze = (map) => deepFreeze$1(map);
 var SOURCE_NAME$1 = "versatiles-shortbread";
@@ -32358,8 +32366,8 @@ var IMPORT_PATH = {
 };
 var BROWSER_BUNDLE_URL = "https://tiles.versatiles.org/assets/lib/versatiles-style/versatiles-style.js";
 function indentBody(code, spaces) {
-  const pad = " ".repeat(spaces);
-  return code.split("\n").map((line2, index) => index === 0 || line2 === "" ? line2 : pad + line2).join("\n");
+  const pad2 = " ".repeat(spaces);
+  return code.split("\n").map((line2, index) => index === 0 || line2 === "" ? line2 : pad2 + line2).join("\n");
 }
 function styleCode(fn2, options, codeOptions) {
   const urls = options.urls;
@@ -32711,6 +32719,9 @@ function describe(error) {
 
 // src/map.ts
 var FRAME_KEY = /^s\d+-\d+$/;
+var SHAPES = "shapes";
+var SHAPE_FILL = "shapes-fill";
+var SHAPE_LINE = "shapes-line";
 function frameKey(source, time) {
   return `s${source}-${time}`;
 }
@@ -32730,6 +32741,8 @@ var TimelineMap = class {
     this.frames = /* @__PURE__ */ new Map();
     this.shown = /* @__PURE__ */ new Set();
     this.points = /* @__PURE__ */ new Map();
+    this.shapes = { type: "FeatureCollection", features: [] };
+    this.drawnShapes = [];
     /** The frames last asked to be shown, some of which may still be loading. */
     this.wanted = [];
     this.styleRequest = 0;
@@ -32789,6 +32802,7 @@ var TimelineMap = class {
     const loaded = new Promise((resolve) => {
       map.on("style.load", () => {
         this.styleReady = true;
+        this.addShapes();
         for (const { frame } of this.frames.values()) this.addFrame(frame);
         this.shown = /* @__PURE__ */ new Set();
         this.apply();
@@ -32919,13 +32933,29 @@ var TimelineMap = class {
       this.points.delete(key);
     }
   }
+  /**
+   * Draws these lines and areas, replacing those drawn before. They are handed to MapLibre only when they change, as
+   * playing moves the time far more often than it changes which features are shown. A source read again gives new
+   * features, so they are compared as objects rather than by their keys.
+   */
+  setShapes(shapes) {
+    const before = this.drawnShapes;
+    const same = shapes.length === before.length && shapes.every((shape, n6) => shape.feature === before[n6].feature && shape.color === before[n6].color);
+    if (same) return;
+    this.drawnShapes = shapes;
+    this.shapes = {
+      type: "FeatureCollection",
+      features: shapes.map((shape) => ({ ...shape.feature, properties: { ...shape.feature.properties, _color: shape.color } }))
+    };
+    if (this.styleReady) this.map?.getSource(SHAPES)?.setData(this.shapes);
+  }
   /** Credits as HTML, behind MapLibre's info button, which starts closed. The base map adds its own to them. */
   setAttribution(credits) {
-    const text2 = credits.join(" \xB7 ");
-    if (!this.map || text2 === this.attributionText) return;
-    this.attributionText = text2;
+    const text3 = credits.join(" \xB7 ");
+    if (!this.map || text3 === this.attributionText) return;
+    this.attributionText = text3;
     if (this.attribution) this.map.removeControl(this.attribution);
-    this.attribution = new vR({ compact: true, customAttribution: text2 || void 0 });
+    this.attribution = new vR({ compact: true, customAttribution: text3 || void 0 });
     this.map.addControl(this.attribution, "top-right");
     const element = this.map.getContainer().querySelector(".maplibregl-ctrl-attrib");
     if (!element) return;
@@ -32953,6 +32983,43 @@ var TimelineMap = class {
     this.points.clear();
     this.wanted = [];
   }
+  /**
+   * The shapes' source and layers, under the base map's first label. A shape's own simplestyle colours win, and one that
+   * names none, or names one MapLibre can't read, is drawn in its source's. Opacities and widths default as simplestyle's.
+   */
+  addShapes() {
+    const map = this.map;
+    if (map.getSource(SHAPES)) return;
+    const label = map.getStyle().layers.find((layer) => layer.type === "symbol")?.id;
+    map.addSource(SHAPES, { type: "geojson", data: this.shapes });
+    map.addLayer(
+      {
+        id: SHAPE_FILL,
+        type: "fill",
+        source: SHAPES,
+        filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
+        paint: {
+          "fill-color": ["to-color", ["get", "fill"], ["get", "_color"]],
+          "fill-opacity": ["number", ["get", "fill-opacity"], 0.6]
+        }
+      },
+      label
+    );
+    map.addLayer(
+      {
+        id: SHAPE_LINE,
+        type: "line",
+        source: SHAPES,
+        filter: ["match", ["geometry-type"], ["LineString", "MultiLineString", "Polygon", "MultiPolygon"], true, false],
+        paint: {
+          "line-color": ["to-color", ["get", "stroke"], ["get", "_color"]],
+          "line-width": ["number", ["get", "stroke-width"], 2],
+          "line-opacity": ["number", ["get", "stroke-opacity"], 1]
+        }
+      },
+      label
+    );
+  }
   /** Adds a frame's layer hidden, under the base map's labels and in its source's place among the others. */
   addFrame(frame) {
     const map = this.map;
@@ -32979,14 +33046,14 @@ var TimelineMap = class {
       this.beforeId(frame.source)
     );
   }
-  /** The layer a source's frames go under: the lowest frame of a later source, or else the base map's first label. */
+  /** The layer a source's frames go under: the lowest frame of a later source, or else the shapes, under the labels. */
   beforeId(source) {
     const layers = this.map.getStyle().layers;
     const later = layers.find((layer) => {
       const entry = this.frames.get(layer.id);
       return entry !== void 0 && entry.frame.source > source;
     });
-    return later?.id ?? layers.find((layer) => layer.type === "symbol")?.id;
+    return later?.id ?? SHAPE_FILL;
   }
   dropUnused() {
     if (this.frames.size <= KEPT_FRAMES) return;
@@ -32999,9 +33066,39 @@ var TimelineMap = class {
   }
 };
 
+// src/xyz.ts
+var TIME_PLACEHOLDER = /\{time:([^}]+)\}/g;
+function validXyzUrl(url) {
+  return ["{z}", "{x}", "{y}"].every((part) => url.includes(part)) && /\{time:[^}]+\}/.test(url);
+}
+function xyzFrames(now, step2, delay, history) {
+  const newest = Math.floor((now - delay) / step2) * step2;
+  const frames = [];
+  for (let time = newest; time >= newest - history; time -= step2) frames.unshift(time);
+  return frames;
+}
+function xyzUrl(url, time) {
+  const date = new Date(time * 1e3);
+  const parts = {
+    YYYY: String(date.getUTCFullYear()),
+    MM: pad(date.getUTCMonth() + 1),
+    DD: pad(date.getUTCDate()),
+    HH: pad(date.getUTCHours()),
+    mm: pad(date.getUTCMinutes()),
+    ss: pad(date.getUTCSeconds())
+  };
+  return url.replace(TIME_PLACEHOLDER, (_3, pattern) => pattern.replace(/YYYY|MM|DD|HH|mm|ss/g, (token2) => parts[token2]));
+}
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+
 // src/options.ts
 var MAP_STYLES = ["default", "colorful", "natural", "muted", "gray", "toner"];
-var SOURCE_TYPES = ["wms", "rainviewer", "geo_location"];
+var SOURCE_TYPES = ["wms", "wmts", "xyz", "rainviewer", "geojson", "geo_location"];
+function isFeatureSource(type) {
+  return type === "geojson" || type === "geo_location";
+}
 var RAINVIEWER_LAYERS = ["radar", "satellite"];
 var DEFAULT_MAP_HEIGHT = 440;
 var DEFAULT_ZOOM = 8;
@@ -33015,8 +33112,8 @@ var DEFAULT_VISIBLE_MINUTES = 30;
 var DEFAULT_TIME_ATTRIBUTE = "publication_date";
 var ENTITY_ID = /^[a-z_]+\.[a-z0-9_]+$/;
 function invalid(key, values = {}) {
-  const text2 = translate(browserLanguage(), `config.invalid_${key}`);
-  return new Error(text2.replace(/\{(\w+)\}/g, (_3, name) => String(values[name] ?? "")));
+  const text3 = translate(browserLanguage(), `config.invalid_${key}`);
+  return new Error(text3.replace(/\{(\w+)\}/g, (_3, name) => String(values[name] ?? "")));
 }
 function parseOptions(raw) {
   const config = isRecord(raw) ? raw : {};
@@ -33036,12 +33133,13 @@ function parseSource(source, index) {
   const type = parseChoice(source.type, SOURCE_TYPES, void 0, "type", where);
   const url = type === "geo_location" ? "" : text(source.url);
   if (type !== "geo_location" && !/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
-  const layer = type === "rainviewer" ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where) : type === "wms" ? text(source.layer) : "";
-  if (type === "wms" && !layer) throw invalid("layer", where);
+  if (type === "xyz" && !validXyzUrl(url)) throw invalid("xyz_url", where);
+  const layer = type === "rainviewer" ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where) : type === "wms" || type === "wmts" ? text(source.layer) : "";
+  if ((type === "wms" || type === "wmts") && !layer) throw invalid("layer", where);
   const entitySource = text(source.source);
   return {
     type,
-    name: text(source.name) || layer || entitySource || "geo_location",
+    name: text(source.name) || layer || entitySource || type,
     icon: text(source.icon),
     url,
     layer,
@@ -33054,6 +33152,8 @@ function parseSource(source, index) {
     attribution: text(source.attribution),
     staleSteps: parseNumber(source.stale_steps, DEFAULT_STALE_STEPS, (value) => value >= 1, "stale_steps", where),
     stepMinutes: parseNumber(source.step_minutes, DEFAULT_STEP_MINUTES, (value) => value >= 1, "step_minutes", where),
+    delayMinutes: parseNumber(source.delay_minutes, 0, (value) => value >= 0, "delay_minutes", where),
+    timeProperty: text(source.time_property),
     entitySource,
     timeAttribute: text(source.time_attribute) || DEFAULT_TIME_ATTRIBUTE,
     visibleMinutes: parseNumber(source.visible_minutes, DEFAULT_VISIBLE_MINUTES, (value) => value > 0, "visible_minutes", where),
@@ -33142,15 +33242,57 @@ function filledStyle(config, layout, minimum, filled) {
   return [limit < Infinity && `max-height: ${limit}px`, filled && `min-height: ${filled}px`].filter(Boolean).join("; ");
 }
 
+// src/geojson.ts
+var MILLISECONDS = 1e11;
+function readGeoJson(json, timeProperty) {
+  const document2 = record(json);
+  const features = document2?.type === "FeatureCollection" && Array.isArray(document2.features) ? document2.features : document2?.type === "Feature" ? [document2] : null;
+  if (!features) throw new Error("the answer isn't a GeoJSON feature collection");
+  const data = { points: [], shapes: [] };
+  features.forEach((entry, index) => {
+    const feature = record(entry);
+    const geometry = record(feature?.geometry);
+    if (!feature || !geometry) return;
+    const properties = record(feature.properties) ?? {};
+    const key = typeof feature.id === "string" || typeof feature.id === "number" ? String(feature.id) : `#${index}`;
+    const time = timeProperty ? timeOf(properties[timeProperty]) : null;
+    const color2 = typeof properties["marker-color"] === "string" ? properties["marker-color"] : "";
+    if (geometry.type === "Point") {
+      if (isPosition(geometry.coordinates)) data.points.push({ key, position: lonLat(geometry.coordinates), time, color: color2 });
+    } else if (geometry.type === "MultiPoint") {
+      if (!Array.isArray(geometry.coordinates)) return;
+      geometry.coordinates.filter(isPosition).forEach((position, n6) => {
+        data.points.push({ key: `${key}:${n6}`, position: lonLat(position), time, color: color2 });
+      });
+    } else {
+      data.shapes.push({ time, feature: { type: "Feature", geometry, properties } });
+    }
+  });
+  return data;
+}
+function timeOf(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.floor(value >= MILLISECONDS ? value / 1e3 : value);
+  return typeof value === "string" ? parseTime(value) : null;
+}
+function isPosition(value) {
+  return Array.isArray(value) && value.length >= 2 && value.every((part) => typeof part === "number" && Number.isFinite(part));
+}
+function lonLat(position) {
+  return [position[0], position[1]];
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+
 // src/rainviewer.ts
 function catalogueUrl(server) {
   return `${server.replace(/\/+$/, "")}/public/weather-maps.json`;
 }
 function readCatalogue(json, layer, scheme) {
-  const catalogue = record(json);
+  const catalogue = record2(json);
   const host = typeof catalogue?.host === "string" ? catalogue.host.replace(/\/+$/, "") : "";
   if (!catalogue || !/^https?:\/\//.test(host)) throw new Error("the answer isn't a RainViewer API catalogue");
-  const section = record(catalogue[layer]);
+  const section = record2(catalogue[layer]);
   const lists = layer === "radar" ? [section?.past, section?.nowcast] : [section?.infrared];
   const frames = lists.flatMap((list) => Array.isArray(list) ? list.flatMap(frameOf) : []);
   const paths = new Map(frames.map((frame) => [frame.time, frame.path]));
@@ -33158,7 +33300,7 @@ function readCatalogue(json, layer, scheme) {
   if (layer === "satellite") {
     return { frames: times, url: (time) => `${host}${paths.get(time)}/256/{z}/{x}/{y}/0/0_0.png`, scheme: null };
   }
-  const offered = (Array.isArray(section?.colorSchemes) ? section.colorSchemes : []).map((entry) => record(entry)?.id).filter((id2) => typeof id2 === "number");
+  const offered = (Array.isArray(section?.colorSchemes) ? section.colorSchemes : []).map((entry) => record2(entry)?.id).filter((id2) => typeof id2 === "number");
   const chosen = scheme ?? offered[0] ?? 0;
   if (offered.length && !offered.includes(chosen)) {
     throw new Error(`the server has no colour scheme ${chosen}, only ${offered.join(", ")}`);
@@ -33166,10 +33308,10 @@ function readCatalogue(json, layer, scheme) {
   return { frames: times, url: (time) => `${host}${paths.get(time)}/256/{z}/{x}/{y}/${chosen}/1_1.png`, scheme: chosen };
 }
 function frameOf(entry) {
-  const frame = record(entry);
+  const frame = record2(entry);
   return typeof frame?.time === "number" && typeof frame.path === "string" && frame.path.startsWith("/") ? [{ time: frame.time, path: frame.path }] : [];
 }
-function record(value) {
+function record2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 
@@ -33232,7 +33374,7 @@ function tileUrl(base, layer, style, time) {
     crs: "EPSG:3857",
     width: "256",
     height: "256",
-    time: new Date(time * 1e3).toISOString().replace(".000Z", "Z")
+    time: isoTime(time)
   });
   return `${url}&bbox={bbox-epsg-3857}`;
 }
@@ -33245,44 +33387,182 @@ function withQuery(base, params) {
   return url.toString();
 }
 
+// src/wmts.ts
+var ZOOM0_SCALE = 5590822640287178e-7;
+function text2(element) {
+  return element?.textContent?.trim() ?? "";
+}
+function readWmtsCapabilities(xml, name) {
+  const document2 = new DOMParser().parseFromString(xml, "text/xml");
+  const root = document2.documentElement;
+  const contents = root?.localName === "Capabilities" ? child(root, "Contents") : void 0;
+  if (!contents) {
+    const error = [...document2.getElementsByTagName("*")].find((element) => element.localName === "ExceptionText");
+    throw new Error(error ? `the server says: ${text2(error)}` : "the answer isn't a WMTS capabilities document");
+  }
+  const layer = children(contents, "Layer").find((candidate) => text2(child(candidate, "Identifier")) === name);
+  if (!layer) throw new Error(`the server has no layer ${name}`);
+  const dimensions = children(layer, "Dimension");
+  const time = dimensions.find((dimension) => text2(child(dimension, "Identifier")).toLowerCase() === "time");
+  const values = time ? children(time, "Value").map(text2).filter(Boolean) : [];
+  if (!time || !values.length) throw new Error(`the layer ${name} has no time dimension`);
+  const styles = children(layer, "Style").sort((a4, b4) => Number(b4.getAttribute("isDefault") === "true") - Number(a4.getAttribute("isDefault") === "true")).map((style) => {
+    const legend = child(style, "LegendURL");
+    return {
+      name: text2(child(style, "Identifier")),
+      legend: legend?.getAttributeNS(XLINK, "href") || legend?.getAttribute("xlink:href") || null
+    };
+  }).filter((style) => style.name);
+  const timeId = text2(child(time, "Identifier")).toLowerCase();
+  const templates = children(layer, "ResourceURL").filter((resource) => resource.getAttribute("resourceType") === "tile").filter((resource) => (resource.getAttribute("template") ?? "").toLowerCase().includes(`{${timeId}}`));
+  const template = (templates.find((resource) => resource.getAttribute("format") === "image/png") ?? templates[0])?.getAttribute(
+    "template"
+  );
+  if (!template) throw new Error(`the layer ${name} has no tile address with the time in it`);
+  const linked = new Set(children(layer, "TileMatrixSetLink").map((link) => text2(child(link, "TileMatrixSet"))));
+  const levels = children(contents, "TileMatrixSet").filter((set) => linked.has(text2(child(set, "Identifier")))).map(webMercatorLevels).filter((set) => set !== null).sort((a4, b4) => b4.maxZoom - a4.maxZoom)[0];
+  if (!levels) throw new Error(`the layer ${name} has no tile matrix set in Web Mercator`);
+  const fixed = /* @__PURE__ */ new Map([
+    ["tilematrixset", levels.id],
+    ["tilematrix", `${levels.prefix}{z}`],
+    ["tilerow", "{y}"],
+    ["tilecol", "{x}"]
+  ]);
+  for (const dimension of dimensions) {
+    if (dimension === time) continue;
+    const id2 = text2(child(dimension, "Identifier")).toLowerCase();
+    const fallback = text2(child(dimension, "Default"));
+    if (id2 && fallback) fixed.set(id2, fallback);
+  }
+  for (const [, placeholder] of template.matchAll(/\{(\w+)\}/g)) {
+    const id2 = placeholder.toLowerCase();
+    if (!fixed.has(id2) && id2 !== "style" && id2 !== timeId)
+      throw new Error(`the layer's tile address has {${placeholder}}, which has no value`);
+  }
+  const provider = child(child(root, "ServiceProvider") ?? root, "ProviderName");
+  return {
+    extent: parseTimeDimension(values.join(",")),
+    styles,
+    attribution: text2(provider),
+    maxZoom: levels.maxZoom,
+    url: (style, at3) => template.replace(/\{(\w+)\}/g, (_3, placeholder) => {
+      const id2 = placeholder.toLowerCase();
+      return id2 === timeId ? isoTime(at3) : id2 === "style" ? style : fixed.get(id2);
+    })
+  };
+}
+function webMercatorLevels(set) {
+  if (!/(?:^|:)(?:3857|900913)$/.test(text2(child(set, "SupportedCRS")))) return null;
+  const matrices = children(set, "TileMatrix").map((matrix) => ({
+    id: text2(child(matrix, "Identifier")),
+    zoom: Math.log2(ZOOM0_SCALE / Number(text2(child(matrix, "ScaleDenominator")))),
+    width: Number(text2(child(matrix, "TileWidth")))
+  }));
+  if (!matrices.length) return null;
+  const prefix = matrices[0].id.replace(/\d+$/, "");
+  const ordered = [...matrices].sort((a4, b4) => a4.zoom - b4.zoom);
+  const fits = ordered.every(
+    (matrix, zoom) => matrix.width === 256 && Math.abs(matrix.zoom - zoom) < 0.01 && matrix.id === `${prefix}${zoom}`
+  );
+  return fits ? { id: text2(child(set, "Identifier")), prefix, maxZoom: ordered.length - 1 } : null;
+}
+
 // src/sources.ts
 async function loadSource(options, now) {
-  return options.type === "rainviewer" ? loadRainViewer(options, now) : loadWms(options, now);
+  switch (options.type) {
+    case "wmts":
+      return loadWmts(options, now);
+    case "xyz":
+      return loadXyz(options, now);
+    case "rainviewer":
+      return loadRainViewer(options, now);
+    case "geojson":
+      return loadGeoJson(options);
+    default:
+      return loadWms(options, now);
+  }
 }
 async function loadWms(options, now) {
   const layer = readCapabilities(await fetchText(capabilitiesUrl(options.url)), options.layer);
-  const style = options.style ? layer.styles.find((candidate) => candidate.name === options.style) : layer.styles[0];
-  if (options.style && !style) {
-    throw new Error(`the layer has no style ${options.style}, only ${layer.styles.map((candidate) => candidate.name).join(", ")}`);
-  }
+  const style = pickStyle(options, layer.styles);
   const defaultStep = options.stepMinutes * 60;
   const frames = framesBetween(layer.extent, now - options.historyMinutes * 60, Infinity, defaultStep);
   return {
+    kind: "images",
     frames,
     step: stepOf(layer.extent, frames, defaultStep),
     url: (time) => tileUrl(options.url, options.layer, style?.name ?? "", time),
     legend: options.legend === false ? null : options.legend ?? style?.legend ?? null,
-    attribution: options.attribution || layer.attribution
+    attribution: options.attribution || layer.attribution,
+    maxZoom: null
   };
 }
+async function loadWmts(options, now) {
+  const layer = readWmtsCapabilities(await fetchText(options.url), options.layer);
+  const style = pickStyle(options, layer.styles);
+  const defaultStep = options.stepMinutes * 60;
+  const frames = framesBetween(layer.extent, now - options.historyMinutes * 60, Infinity, defaultStep);
+  return {
+    kind: "images",
+    frames,
+    step: stepOf(layer.extent, frames, defaultStep),
+    url: (time) => layer.url(style?.name ?? "", time),
+    legend: options.legend === false ? null : options.legend ?? style?.legend ?? null,
+    attribution: options.attribution || layer.attribution,
+    maxZoom: layer.maxZoom
+  };
+}
+function loadXyz(options, now) {
+  const step2 = options.stepMinutes * 60;
+  return Promise.resolve({
+    kind: "images",
+    frames: xyzFrames(now, step2, options.delayMinutes * 60, options.historyMinutes * 60),
+    step: step2,
+    url: (time) => xyzUrl(options.url, time),
+    legend: typeof options.legend === "string" ? options.legend : null,
+    attribution: options.attribution,
+    maxZoom: null
+  });
+}
 async function loadRainViewer(options, now) {
-  const text2 = await fetchText(catalogueUrl(options.url));
-  let json;
-  try {
-    json = JSON.parse(text2);
-  } catch {
-    throw new Error("the answer isn't a RainViewer API catalogue");
-  }
-  const catalogue = readCatalogue(json, options.layer, options.colorScheme);
+  const catalogue = readCatalogue(
+    parseJson(await fetchText(catalogueUrl(options.url)), "the answer isn't a RainViewer API catalogue"),
+    options.layer,
+    options.colorScheme
+  );
   const frames = catalogue.frames.filter((time) => time >= now - options.historyMinutes * 60);
   return {
+    kind: "images",
     frames,
     step: stepOf({ times: frames, ranges: [] }, frames, options.stepMinutes * 60),
     url: catalogue.url,
     // The API has neither legends nor credits of its own.
     legend: typeof options.legend === "string" ? options.legend : null,
+    attribution: options.attribution,
+    maxZoom: null
+  };
+}
+async function loadGeoJson(options) {
+  return {
+    kind: "features",
+    data: readGeoJson(parseJson(await fetchText(options.url), "the answer isn't GeoJSON"), options.timeProperty),
+    step: options.stepMinutes * 60,
+    legend: typeof options.legend === "string" ? options.legend : null,
     attribution: options.attribution
   };
+}
+function pickStyle(options, styles) {
+  if (!options.style) return styles[0];
+  const style = styles.find((candidate) => candidate.name === options.style);
+  if (!style) throw new Error(`the layer has no style ${options.style}, only ${styles.map((candidate) => candidate.name).join(", ")}`);
+  return style;
+}
+function parseJson(text3, error) {
+  try {
+    return JSON.parse(text3);
+  } catch {
+    throw new Error(error);
+  }
 }
 async function fetchText(url) {
   const response = await fetch(url);
@@ -33291,6 +33571,7 @@ async function fetchText(url) {
 }
 
 // src/map-timeline-card.ts
+var DEFAULT_PRIMARY = "#03a9f4";
 var BORDER_PX = 2;
 var MIN_HEIGHT_PX = 260;
 var TICK_MS = 3e4;
@@ -33520,7 +33801,7 @@ var MapTimelineCard = class extends i4 {
                 </div>
                 ${now > first && now < first + span ? b2`<span class="now-tick" style="left:${at3(now)}"></span>` : A}
                 ${this.options.sources.flatMap(
-      (source, i7) => this.enabled[i7] && source.type === "geo_location" && source.timelineMarks ? this.events(i7).filter((event) => event.time !== null && event.time >= first && event.time <= first + span).map((event) => b2`<span class="mark" style="left:${at3(event.time)};${colorStyle(source.color)}"></span>`) : []
+      (source, i7) => this.enabled[i7] && isFeatureSource(source.type) && source.timelineMarks ? this.featureTimes(i7).filter((time) => time >= first && time <= first + span).map((time) => b2`<span class="mark" style="left:${at3(time)};${colorStyle(source.color)}"></span>`) : []
     )}
                 <span class="handle" data-handle="0" style="left:${at3(start)}"></span>
                 <span class="handle" data-handle="1" style="left:${at3(end)}"></span>
@@ -33544,20 +33825,22 @@ var MapTimelineCard = class extends i4 {
         note = this.text("chip.failed");
         title = this.text("chip.error", { reason: state.error });
         warn = true;
-      } else if (on2 && this.mode === "live" && source.type === "geo_location") {
-        const times = this.events(i7).flatMap((event) => event.time === null ? [] : [event.time]);
-        if (times.length) note = this.age(now - Math.max(...times));
+      } else if (on2 && this.mode === "live" && isFeatureSource(source.type)) {
+        const times = this.featureTimes(i7);
+        if (source.type === "geojson" && !state.loaded) note = this.text("chip.loading");
+        else if (times.length) note = this.age(now - Math.max(...times));
       } else if (on2 && this.mode === "live") {
-        if (!state.loaded) {
+        const loaded = state.loaded;
+        if (loaded?.kind !== "images") {
           note = this.text("chip.loading");
         } else {
-          const newest = frameAt(state.loaded.frames, now);
+          const newest = frameAt(loaded.frames, now);
           if (newest === null) {
             note = this.text("chip.only_ahead");
           } else {
             note = this.age(now - newest);
             const quiet = Date.now() - state.advancedAt;
-            if (quiet > source.staleSteps * state.loaded.step * 1e3) {
+            if (quiet > source.staleSteps * loaded.step * 1e3) {
               warn = true;
               title = this.text("chip.stale", { age: this.age(quiet / 1e3) });
             }
@@ -33589,10 +33872,10 @@ var MapTimelineCard = class extends i4 {
   }
   /** The timeline over the sources that are on and have been read. */
   timeline() {
-    const images = this.sources.flatMap((source, i7) => this.enabled[i7] && source.loaded ? [source.loaded] : []);
+    const images = this.sources.flatMap((source, i7) => this.enabled[i7] && source.loaded?.kind === "images" ? [source.loaded] : []);
     const now = Date.now() / 1e3;
     const points = this.options.sources.flatMap(
-      (source, i7) => this.enabled[i7] && source.type === "geo_location" ? [{ frames: [now - source.historyMinutes * 60, now], step: images.length ? Infinity : source.stepMinutes * 60 }] : []
+      (source, i7) => this.enabled[i7] && timed(source) ? [{ frames: [now - source.historyMinutes * 60, now], step: images.length ? Infinity : source.stepMinutes * 60 }] : []
     );
     return buildTimeline([...images, ...points]);
   }
@@ -33606,32 +33889,45 @@ var MapTimelineCard = class extends i4 {
     const frames = [];
     const ahead = [];
     this.sources.forEach((source, i7) => {
-      if (!this.enabled[i7] || !source.loaded) return;
-      const frame = frameFor(source.loaded.frames, time, now);
+      const loaded = source.loaded;
+      if (!this.enabled[i7] || loaded?.kind !== "images") return;
+      const frame = frameFor(loaded.frames, time, now);
       const options = this.options.sources[i7];
       const drawn = (at3) => ({
         key: frameKey(i7, at3),
         source: i7,
-        url: source.loaded.url(at3),
+        url: loaded.url(at3),
         opacity: options.opacity,
-        maxZoom: options.maxZoom
+        maxZoom: options.maxZoom ?? loaded.maxZoom
       });
       if (frame !== null) frames.push(drawn(frame));
-      const coming = next === void 0 ? null : frameFor(source.loaded.frames, next, now);
+      const coming = next === void 0 ? null : frameFor(loaded.frames, next, now);
       if (coming !== null && coming !== frame) ahead.push(drawn(coming));
     });
     this.map.show(frames, ahead);
     const points = [];
+    const shapes = [];
+    const live = this.mode === "live";
+    let primary = "";
     this.options.sources.forEach((source, i7) => {
-      if (!this.enabled[i7] || source.type !== "geo_location") return;
-      for (const event of this.events(i7)) {
-        const opacity = eventOpacity(event, time, source.visibleMinutes * 60, this.mode === "live");
+      if (!this.enabled[i7] || !isFeatureSource(source.type)) return;
+      const visibleFor = source.visibleMinutes * 60;
+      const features = this.features(i7);
+      for (const event of features.points) {
+        const opacity = eventOpacity(event, time, visibleFor, live, timed(source));
         if (opacity > 0) {
-          points.push({ key: `${i7}:${event.key}`, position: event.position, icon: source.icon, color: source.color, opacity });
+          const color2 = event.color || source.color;
+          points.push({ key: `${i7}:${event.key}`, position: event.position, icon: source.icon, color: color2, opacity });
         }
+      }
+      for (const shape of features.shapes) {
+        if (eventOpacity(shape, time, visibleFor, live, timed(source)) === 0) continue;
+        primary || (primary = getComputedStyle(this).getPropertyValue("--primary-color").trim() || DEFAULT_PRIMARY);
+        shapes.push({ feature: shape.feature, color: source.color || primary });
       }
     });
     this.map.setPoints(points);
+    this.map.setShapes(shapes);
     this.map.setAttribution(
       this.options.sources.flatMap((source, i7) => {
         const credit = !this.enabled[i7] ? "" : source.type === "geo_location" ? source.attribution : this.sources[i7]?.loaded?.attribution;
@@ -33639,10 +33935,19 @@ var MapTimelineCard = class extends i4 {
       })
     );
   }
-  /** A geo_location source's entities, as they are in Home Assistant now. */
-  events(i7) {
+  /** A feature source's points and shapes: a geo_location source's entities as they are in Home Assistant now, a GeoJSON source's as last read. */
+  features(i7) {
     const source = this.options.sources[i7];
-    return this.hass ? geoEvents(this.hass.states, source.entitySource, source.timeAttribute) : [];
+    if (source.type === "geo_location") {
+      return { points: this.hass ? geoEvents(this.hass.states, source.entitySource, source.timeAttribute) : [], shapes: [] };
+    }
+    const loaded = this.sources[i7]?.loaded;
+    return loaded?.kind === "features" ? loaded.data : { points: [], shapes: [] };
+  }
+  /** The times of a feature source's points and shapes, those that have one. */
+  featureTimes(i7) {
+    const { points, shapes } = this.features(i7);
+    return [...points, ...shapes].flatMap((feature) => feature.time === null ? [] : [feature.time]);
   }
   toggleSource(i7) {
     this.enabled = this.enabled.map((on2, j2) => j2 === i7 ? !on2 : on2);
@@ -33675,8 +33980,8 @@ var MapTimelineCard = class extends i4 {
       if (key !== this.sourcesKey) return;
       const step2 = this.timeline()?.step;
       const before = this.sources[i7];
-      const newest = (frames) => frames?.[frames.length - 1];
-      const advanced = !before.loaded || newest(before.loaded.frames) !== newest(loaded.frames);
+      const newest = (source) => source?.kind === "images" ? source.frames[source.frames.length - 1] : void 0;
+      const advanced = !before.loaded || newest(before.loaded) !== newest(loaded);
       this.sources = this.sources.map(
         (source, j2) => j2 === i7 ? { ...source, loaded, error: "", advancedAt: advanced ? Date.now() : source.advancedAt } : source
       );
@@ -34153,11 +34458,14 @@ function previousOf(times, time) {
 function nextOf(times, time) {
   return times.find((candidate) => candidate > time) ?? time;
 }
+function timed(source) {
+  return source.type === "geo_location" || source.type === "geojson" && source.timeProperty !== "";
+}
 function colorStyle(color2) {
   return color2 ? `--point-color:${color2}` : "";
 }
-function escapeHtml(text2) {
-  return text2.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+function escapeHtml(text3) {
+  return text3.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 if (!customElements.get("map-timeline-card")) customElements.define("map-timeline-card", MapTimelineCard);
 export {

@@ -3,12 +3,18 @@
  * Assistant shows what is wrong in place of the card instead of a map quietly drawn some other way.
  */
 import { browserLanguage, translate } from "./localize/localize";
+import { validXyzUrl } from "./xyz";
 
 export const MAP_STYLES = ["default", "colorful", "natural", "muted", "gray", "toner"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
-export const SOURCE_TYPES = ["wms", "rainviewer", "geo_location"] as const;
+export const SOURCE_TYPES = ["wms", "wmts", "xyz", "rainviewer", "geojson", "geo_location"] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
+
+/** Sources drawn as points and shapes, each at its own time, rather than as frames of images. */
+export function isFeatureSource(type: SourceType): boolean {
+    return type === "geojson" || type === "geo_location";
+}
 
 export const RAINVIEWER_LAYERS = ["radar", "satellite"] as const;
 
@@ -22,9 +28,12 @@ export const DEFAULT_SPEED = 10;
 export const DEFAULT_HISTORY_MINUTES = 120;
 /** How many of its steps a source may go without a new frame before its chip warns. */
 export const DEFAULT_STALE_STEPS = 3;
-/** The step of a source whose times give no period, such as a WMS range with only a start and an end. */
+/**
+ * The step of a source whose times give no period, such as a WMS range with only a start and an end, an XYZ source's
+ * step, and how often a GeoJSON source is read again.
+ */
 export const DEFAULT_STEP_MINUTES = 5;
-/** How long a geo_location entity stays on the map after its time. */
+/** How long a feature (a geo_location entity, or a GeoJSON point, line or area) stays on the map after its time. */
 export const DEFAULT_VISIBLE_MINUTES = 30;
 export const DEFAULT_TIME_ATTRIBUTE = "publication_date";
 
@@ -37,9 +46,9 @@ export interface SourceOptions {
     /** An mdi icon for its chip, or "" for the type's own. */
     icon: string;
     url: string;
-    /** A WMS layer's name, or a RainViewer API's `radar` or `satellite`. */
+    /** A WMS or WMTS layer's name, or a RainViewer API's `radar` or `satellite`. */
     layer: string;
-    /** A WMS server's style to draw with, or "" for the first it lists. */
+    /** A WMS or WMTS server's style to draw with, or "" for the first or default it lists. */
     style: string;
     /** A RainViewer API's colour scheme, or null for the first it lists. */
     colorScheme: number | null;
@@ -53,14 +62,18 @@ export interface SourceOptions {
     attribution: string;
     staleSteps: number;
     stepMinutes: number;
+    /** How far behind now an XYZ source's newest frame is. */
+    delayMinutes: number;
+    /** A GeoJSON feature's property its time is in, or "" for features shown at every moment. */
+    timeProperty: string;
     /** A geo_location source's entities by their `source` attribute, or "" for every one. */
     entitySource: string;
     /** The attribute a geo_location entity's time is in. */
     timeAttribute: string;
     visibleMinutes: number;
-    /** A mark above the timeline for each timed point. */
+    /** A mark above the timeline for each feature with a time. */
     timelineMarks: boolean;
-    /** A point's colour, as a hex colour, or "" for the theme's primary colour. */
+    /** The colour of a feature that names none of its own, as a hex colour, or "" for the theme's primary colour. */
     color: string;
 }
 
@@ -101,17 +114,18 @@ function parseSource(source: Record<string, unknown>, index: number): SourceOpti
     // A geo_location source reads Home Assistant's own entities, and has neither an address nor a layer.
     const url = type === "geo_location" ? "" : text(source.url);
     if (type !== "geo_location" && !/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
+    if (type === "xyz" && !validXyzUrl(url)) throw invalid("xyz_url", where);
     const layer =
         type === "rainviewer"
             ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where)
-            : type === "wms"
+            : type === "wms" || type === "wmts"
               ? text(source.layer)
               : "";
-    if (type === "wms" && !layer) throw invalid("layer", where);
+    if ((type === "wms" || type === "wmts") && !layer) throw invalid("layer", where);
     const entitySource = text(source.source);
     return {
         type,
-        name: text(source.name) || layer || entitySource || "geo_location",
+        name: text(source.name) || layer || entitySource || type,
         icon: text(source.icon),
         url,
         layer,
@@ -124,6 +138,8 @@ function parseSource(source: Record<string, unknown>, index: number): SourceOpti
         attribution: text(source.attribution),
         staleSteps: parseNumber(source.stale_steps, DEFAULT_STALE_STEPS, (value) => value >= 1, "stale_steps", where),
         stepMinutes: parseNumber(source.step_minutes, DEFAULT_STEP_MINUTES, (value) => value >= 1, "step_minutes", where),
+        delayMinutes: parseNumber(source.delay_minutes, 0, (value) => value >= 0, "delay_minutes", where),
+        timeProperty: text(source.time_property),
         entitySource,
         timeAttribute: text(source.time_attribute) || DEFAULT_TIME_ATTRIBUTE,
         visibleMinutes: parseNumber(source.visible_minutes, DEFAULT_VISIBLE_MINUTES, (value) => value > 0, "visible_minutes", where),

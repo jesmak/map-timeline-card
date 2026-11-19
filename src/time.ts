@@ -35,6 +35,11 @@ export function parseTime(text: string): number | null {
     return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
 }
 
+/** A time as WMS and WMTS servers take it, such as 2026-11-19T12:05:00Z. */
+export function isoTime(time: number): string {
+    return new Date(time * 1000).toISOString().replace(".000Z", "Z");
+}
+
 /**
  * A WMS time dimension's value: times and `start/end/period` ranges separated by commas, as WMS 1.3.0's annex C
  * describes. Throws on anything else, so a source that can't be read says so instead of showing nothing.

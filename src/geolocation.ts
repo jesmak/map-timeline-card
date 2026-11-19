@@ -11,6 +11,8 @@ export interface GeoEvent {
     position: [number, number];
     /** In seconds, or null when the entity has no time, and is shown only live. */
     time: number | null;
+    /** Its own colour, or "" for its source's. */
+    color: string;
 }
 
 /** How faint a point is at the end of its visibility, fading to it linearly from its time. */
@@ -29,16 +31,18 @@ export function geoEvents(states: Record<string, HassEntity | undefined>, source
         if (source && state.attributes.source !== source) continue;
         const raw = state.attributes[timeAttribute];
         const time = typeof raw === "string" ? parseTime(raw) : typeof raw === "number" ? raw : null;
-        events.push({ key: id, position: [longitude, latitude], time });
+        events.push({ key: id, position: [longitude, latitude], time, color: "" });
     }
     return events;
 }
 
 /**
  * How visible an event is at `at`: from 1 at its time down to FADED_OPACITY at the end of `visibleFor` seconds, and 0
- * before its time or after that. An event without a time is shown only live, at full strength.
+ * before its time or after that. An event without a time is shown only live, at full strength, and every event of a
+ * source without times (`timed` false) at every moment.
  */
-export function eventOpacity(event: GeoEvent, at: number, visibleFor: number, live: boolean): number {
+export function eventOpacity(event: { time: number | null }, at: number, visibleFor: number, live: boolean, timed = true): number {
+    if (!timed) return 1;
     if (event.time === null) return live ? 1 : 0;
     const age = at - event.time;
     if (age < 0 || age > visibleFor) return 0;

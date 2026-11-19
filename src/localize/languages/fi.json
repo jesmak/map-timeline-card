@@ -12,6 +12,7 @@
         "invalid_speed": "Virheellinen nopeus. speed on sekunnissa toistettavat minuutit, enemmän kuin 0.",
         "invalid_type": "Virheellinen lähde {n}. type on jokin näistä {values}.",
         "invalid_url": "Virheellinen lähde {n}. url on palvelun osoite, joka alkaa https:// tai http://.",
+        "invalid_xyz_url": "Virheellinen lähde {n}. url on tiilien osoite, jossa on {z}, {x} ja {y} sekä aika muodossa {time:YYYYMMDDHHmm} tai muussa muodossa.",
         "invalid_layer": "Virheellinen lähde {n}. layer on palvelun karttatason nimi.",
         "invalid_rainviewer_layer": "Virheellinen lähde {n}. layer on jokin näistä {values}.",
         "invalid_color_scheme": "Virheellinen lähde {n}. color_scheme on jonkin palvelimen väriskaalan numero.",
@@ -24,6 +25,7 @@
         "invalid_legend": "Virheellinen lähde {n}. legend on false tai selitekuvan osoite.",
         "invalid_stale_steps": "Virheellinen lähde {n}. stale_steps on luku, vähintään 1.",
         "invalid_step_minutes": "Virheellinen lähde {n}. step_minutes on minuutteina, vähintään 1.",
+        "invalid_delay_minutes": "Virheellinen lähde {n}. delay_minutes on minuutteina, 0 tai enemmän.",
         "invalid_row_step": "Virheellinen pyöristys. row_step on full tai half."
     },
     "bar": {
