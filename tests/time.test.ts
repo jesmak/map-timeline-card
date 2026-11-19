@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTimeline, defaultWindow, frameAt, framesBetween, parseDuration, parseTime, parseTimeDimension, stepOf } from "../src/time";
+import {
+    buildTimeline,
+    defaultWindow,
+    frameAt,
+    frameFor,
+    framesBetween,
+    parseDuration,
+    parseTime,
+    parseTimeDimension,
+    stepOf,
+} from "../src/time";
 
 const at = (text: string) => parseTime(text)!;
 
@@ -156,6 +166,29 @@ describe("frameAt", () => {
 
     it("is null without frames", () => {
         expect(frameAt([], 100)).toBeNull();
+    });
+});
+
+describe("frameFor", () => {
+    const observed = [100, 200, 300];
+    const withForecast = [100, 200, 300, 400, 500];
+
+    it("shows an observation-only source's newest frame up to now", () => {
+        expect(frameFor(observed, 250, 300)).toBe(200);
+        expect(frameFor(observed, 300, 300)).toBe(300);
+    });
+
+    it("shows nothing of an observation-only source ahead of now", () => {
+        expect(frameFor(observed, 350, 300)).toBeNull();
+    });
+
+    it("shows a source with frames ahead in the forecast too, its newest at or before the time", () => {
+        expect(frameFor(withForecast, 450, 300)).toBe(400);
+    });
+
+    it("keeps a forecast-only source's first frame for the time between now and it", () => {
+        expect(frameFor([400, 500], 350, 300)).toBeNull();
+        expect(frameFor([400, 500], 420, 300)).toBe(400);
     });
 });
 

@@ -33066,6 +33066,10 @@ function frameAt(frames, time) {
   }
   return found;
 }
+function frameFor(frames, time, now) {
+  if (time > now && !(frames[frames.length - 1] > now)) return null;
+  return frameAt(frames, time);
+}
 function buildTimeline(sources) {
   const withFrames = sources.filter((source) => source.frames.length);
   if (!withFrames.length) return null;
@@ -33508,7 +33512,7 @@ var MapTimelineCard = class extends i4 {
     const ahead = [];
     this.sources.forEach((source, i7) => {
       if (!this.enabled[i7] || !source.loaded) return;
-      const frame = frameAt(source.loaded.frames, time);
+      const frame = frameFor(source.loaded.frames, time, now);
       const options = this.options.sources[i7];
       const drawn = (at3) => ({
         key: frameKey(i7, at3),
@@ -33518,7 +33522,7 @@ var MapTimelineCard = class extends i4 {
         maxZoom: options.maxZoom
       });
       if (frame !== null) frames.push(drawn(frame));
-      const coming = next === void 0 ? null : frameAt(source.loaded.frames, next);
+      const coming = next === void 0 ? null : frameFor(source.loaded.frames, next, now);
       if (coming !== null && coming !== frame) ahead.push(drawn(coming));
     });
     this.map.show(frames, ahead);

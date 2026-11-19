@@ -111,6 +111,16 @@ export function frameAt(frames: number[], time: number): number | null {
     return found;
 }
 
+/**
+ * A source's frame to show at `time`: its newest at or before it, but ahead of `now` only when the source has frames
+ * ahead of its own. A source of observations alone shows nothing in the forecast, so the map never shows an
+ * observation under another source's forecast as if both were of the same moment.
+ */
+export function frameFor(frames: number[], time: number, now: number): number | null {
+    if (time > now && !(frames[frames.length - 1] > now)) return null;
+    return frameAt(frames, time);
+}
+
 export interface Timeline {
     /** The timeline's times, oldest first, `step` apart. */
     times: number[];

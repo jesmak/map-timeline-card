@@ -17,7 +17,7 @@ import { readThemeColors } from "./map-theme";
 import { parseOptions, type CardOptions } from "./options";
 import { fillLimit, filledHeight, filledStyle, validRowStep, type RowStepConfig } from "./rows";
 import { loadSource, type LoadedSource } from "./sources";
-import { buildTimeline, defaultWindow, frameAt, MIN_STEP, type Timeline } from "./time";
+import { buildTimeline, defaultWindow, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
 
 /** Replaced at build time with the version in package.json. */
 declare const __CARD_VERSION__: string;
@@ -360,7 +360,7 @@ export class MapTimelineCard extends LitElement {
         const ahead: DrawnFrame[] = [];
         this.sources.forEach((source, i) => {
             if (!this.enabled[i] || !source.loaded) return;
-            const frame = frameAt(source.loaded.frames, time);
+            const frame = frameFor(source.loaded.frames, time, now);
             const options = this.options!.sources[i];
             const drawn = (at: number): DrawnFrame => ({
                 key: frameKey(i, at),
@@ -370,7 +370,7 @@ export class MapTimelineCard extends LitElement {
                 maxZoom: options.maxZoom,
             });
             if (frame !== null) frames.push(drawn(frame));
-            const coming = next === undefined ? null : frameAt(source.loaded.frames, next);
+            const coming = next === undefined ? null : frameFor(source.loaded.frames, next, now);
             if (coming !== null && coming !== frame) ahead.push(drawn(coming));
         });
         this.map.show(frames, ahead);
