@@ -1,0 +1,197 @@
+{
+    "version": "2.0",
+    "generated": 1795112651,
+    "host": "https://api.librewxr.net",
+    "radar": {
+        "past": [
+            {
+                "time": 1795105800,
+                "path": "/v2/radar/1795105800"
+            },
+            {
+                "time": 1795106400,
+                "path": "/v2/radar/1795106400"
+            },
+            {
+                "time": 1795107000,
+                "path": "/v2/radar/1795107000"
+            },
+            {
+                "time": 1795107600,
+                "path": "/v2/radar/1795107600"
+            },
+            {
+                "time": 1795108200,
+                "path": "/v2/radar/1795108200"
+            },
+            {
+                "time": 1795108800,
+                "path": "/v2/radar/1795108800"
+            },
+            {
+                "time": 1795109400,
+                "path": "/v2/radar/1795109400"
+            },
+            {
+                "time": 1795110000,
+                "path": "/v2/radar/1795110000"
+            },
+            {
+                "time": 1795110600,
+                "path": "/v2/radar/1795110600"
+            },
+            {
+                "time": 1795111200,
+                "path": "/v2/radar/1795111200"
+            },
+            {
+                "time": 1795111800,
+                "path": "/v2/radar/1795111800"
+            },
+            {
+                "time": 1795112400,
+                "path": "/v2/radar/1795112400"
+            }
+        ],
+        "nowcast": [
+            {
+                "time": 1795113000,
+                "path": "/v2/radar/1795113000"
+            },
+            {
+                "time": 1795113600,
+                "path": "/v2/radar/1795113600"
+            },
+            {
+                "time": 1795114200,
+                "path": "/v2/radar/1795114200"
+            },
+            {
+                "time": 1795114800,
+                "path": "/v2/radar/1795114800"
+            },
+            {
+                "time": 1795115400,
+                "path": "/v2/radar/1795115400"
+            },
+            {
+                "time": 1795116000,
+                "path": "/v2/radar/1795116000"
+            }
+        ],
+        "colorSchemes": [
+            {
+                "id": 0,
+                "name": "Black and White"
+            },
+            {
+                "id": 1,
+                "name": "Rainviewer Original"
+            },
+            {
+                "id": 2,
+                "name": "Universal Blue"
+            },
+            {
+                "id": 3,
+                "name": "Titan"
+            },
+            {
+                "id": 4,
+                "name": "The Weather Channel (TWC)"
+            },
+            {
+                "id": 5,
+                "name": "Meteored"
+            },
+            {
+                "id": 6,
+                "name": "NEXRAD Level III"
+            },
+            {
+                "id": 7,
+                "name": "Rainbow @ Selex SI"
+            },
+            {
+                "id": 8,
+                "name": "Dark Sky"
+            },
+            {
+                "id": 9,
+                "name": "Datameteo Valerio"
+            },
+            {
+                "id": 10,
+                "name": "Viper HD"
+            },
+            {
+                "id": 11,
+                "name": "MRMS CREF"
+            },
+            {
+                "id": 12,
+                "name": "33/40 Max Storm"
+            },
+            {
+                "id": 13,
+                "name": "MetService NZ (Dark)"
+            },
+            {
+                "id": 14,
+                "name": "Windy"
+            }
+        ]
+    },
+    "satellite": {
+        "infrared": [
+            {
+                "time": 1795068000,
+                "path": "/v2/satellite/1795068000"
+            },
+            {
+                "time": 1795071600,
+                "path": "/v2/satellite/1795071600"
+            },
+            {
+                "time": 1795075200,
+                "path": "/v2/satellite/1795075200"
+            },
+            {
+                "time": 1795078800,
+                "path": "/v2/satellite/1795078800"
+            },
+            {
+                "time": 1795082400,
+                "path": "/v2/satellite/1795082400"
+            },
+            {
+                "time": 1795086000,
+                "path": "/v2/satellite/1795086000"
+            },
+            {
+                "time": 1795089600,
+                "path": "/v2/satellite/1795089600"
+            },
+            {
+                "time": 1795093200,
+                "path": "/v2/satellite/1795093200"
+            },
+            {
+                "time": 1795096800,
+                "path": "/v2/satellite/1795096800"
+            },
+            {
+                "time": 1795100400,
+                "path": "/v2/satellite/1795100400"
+            },
+            {
+                "time": 1795104000,
+                "path": "/v2/satellite/1795104000"
+            },
+            {
+                "time": 1795107600,
+                "path": "/v2/satellite/1795107600"
+            }
+        ]
+    }
+}

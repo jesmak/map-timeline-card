@@ -785,6 +785,9 @@ var en_default = {
     invalid_type: "Invalid source {n}. type must be one of {values}.",
     invalid_url: "Invalid source {n}. url must be the address of its service, starting with https:// or http://.",
     invalid_layer: "Invalid source {n}. layer must be the name of a layer of its service.",
+    invalid_rainviewer_layer: "Invalid source {n}. layer must be one of {values}.",
+    invalid_color_scheme: "Invalid source {n}. color_scheme must be the number of one of its server's colour schemes.",
+    invalid_max_zoom: "Invalid source {n}. max_zoom must be a whole number from 0 to 22.",
     invalid_history_minutes: "Invalid source {n}. history_minutes must be a number of minutes, 0 or more.",
     invalid_opacity: "Invalid source {n}. opacity must be a number greater than 0 and at most 1.",
     invalid_legend: "Invalid source {n}. legend must be false, or the address of a legend image.",
@@ -849,6 +852,9 @@ var fi_default = {
     invalid_type: "Virheellinen l\xE4hde {n}. type on jokin n\xE4ist\xE4 {values}.",
     invalid_url: "Virheellinen l\xE4hde {n}. url on palvelun osoite, joka alkaa https:// tai http://.",
     invalid_layer: "Virheellinen l\xE4hde {n}. layer on palvelun karttatason nimi.",
+    invalid_rainviewer_layer: "Virheellinen l\xE4hde {n}. layer on jokin n\xE4ist\xE4 {values}.",
+    invalid_color_scheme: "Virheellinen l\xE4hde {n}. color_scheme on jonkin palvelimen v\xE4riskaalan numero.",
+    invalid_max_zoom: "Virheellinen l\xE4hde {n}. max_zoom on kokonaisluku 0\u201322.",
     invalid_history_minutes: "Virheellinen l\xE4hde {n}. history_minutes on minuutteina, 0 tai enemm\xE4n.",
     invalid_opacity: "Virheellinen l\xE4hde {n}. opacity on luku, enemm\xE4n kuin 0 ja enint\xE4\xE4n 1.",
     invalid_legend: "Virheellinen l\xE4hde {n}. legend on false tai selitekuvan osoite.",
@@ -28141,10 +28147,10 @@ function checkColor(value, path) {
 function checkColors(value, keys, path) {
   if (value == null || typeof value !== "object")
     return;
-  const record = value;
+  const record2 = value;
   for (const key of keys) {
-    if (record[key] != null)
-      checkColor(record[key], `${path}.${key}`);
+    if (record2[key] != null)
+      checkColor(record2[key], `${path}.${key}`);
   }
 }
 var COLOR_KEYS = Object.fromEntries(colorOptionsKeys.map((key) => [key, true]));
@@ -32789,7 +32795,12 @@ var TimelineMap = class {
   addFrame(frame) {
     const map = this.map;
     if (map.getLayer(frame.key)) return;
-    map.addSource(frame.key, { type: "raster", tiles: [frame.url], tileSize: 256 });
+    map.addSource(frame.key, {
+      type: "raster",
+      tiles: [frame.url],
+      tileSize: 256,
+      ...frame.maxZoom === null ? {} : { maxzoom: frame.maxZoom }
+    });
     map.addLayer(
       {
         id: frame.key,
@@ -32828,7 +32839,8 @@ var TimelineMap = class {
 
 // src/options.ts
 var MAP_STYLES = ["default", "colorful", "natural", "muted", "gray", "toner"];
-var SOURCE_TYPES = ["wms"];
+var SOURCE_TYPES = ["wms", "rainviewer"];
+var RAINVIEWER_LAYERS = ["radar", "satellite"];
 var DEFAULT_MAP_HEIGHT = 440;
 var DEFAULT_ZOOM = 8;
 var DEFAULT_REGION_ZOOM = 5;
@@ -32860,7 +32872,7 @@ function parseSource(source, index) {
   const type = parseChoice(source.type, SOURCE_TYPES, void 0, "type", where);
   const url = typeof source.url === "string" ? source.url.trim() : "";
   if (!/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
-  const layer = typeof source.layer === "string" ? source.layer.trim() : "";
+  const layer = type === "rainviewer" ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where) : typeof source.layer === "string" ? source.layer.trim() : "";
   if (!layer) throw invalid("layer", where);
   return {
     type,
@@ -32869,6 +32881,8 @@ function parseSource(source, index) {
     url,
     layer,
     style: text(source.style),
+    colorScheme: parseOptional(source.color_scheme, (value) => Number.isInteger(value) && value >= 0, "color_scheme", where),
+    maxZoom: parseOptional(source.max_zoom, (value) => Number.isInteger(value) && value >= 0 && value <= 22, "max_zoom", where),
     historyMinutes: parseNumber(source.history_minutes, DEFAULT_HISTORY_MINUTES, (value) => value >= 0, "history_minutes", where),
     opacity: parseNumber(source.opacity, 1, (value) => value > 0 && value <= 1, "opacity", where),
     legend: parseLegend(source.legend, where),
@@ -32901,6 +32915,10 @@ function parseNumber(value, fallback, valid, key, values = {}) {
   const parsed = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
   if (Number.isFinite(parsed) && valid(parsed)) return parsed;
   throw invalid(key, values);
+}
+function parseOptional(value, valid, key, values) {
+  if (value === void 0 || value === null || value === "") return null;
+  return parseNumber(value, 0, valid, key, values);
 }
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -32942,6 +32960,37 @@ function filledStyle(config, layout, minimum, filled) {
     return heightStyle(config, layout, minimum);
   }
   return [limit < Infinity && `max-height: ${limit}px`, filled && `min-height: ${filled}px`].filter(Boolean).join("; ");
+}
+
+// src/rainviewer.ts
+function catalogueUrl(server) {
+  return `${server.replace(/\/+$/, "")}/public/weather-maps.json`;
+}
+function readCatalogue(json, layer, scheme) {
+  const catalogue = record(json);
+  const host = typeof catalogue?.host === "string" ? catalogue.host.replace(/\/+$/, "") : "";
+  if (!catalogue || !/^https?:\/\//.test(host)) throw new Error("the answer isn't a RainViewer API catalogue");
+  const section = record(catalogue[layer]);
+  const lists = layer === "radar" ? [section?.past, section?.nowcast] : [section?.infrared];
+  const frames = lists.flatMap((list) => Array.isArray(list) ? list.flatMap(frameOf) : []);
+  const paths = new Map(frames.map((frame) => [frame.time, frame.path]));
+  const times = [...paths.keys()].sort((a4, b4) => a4 - b4);
+  if (layer === "satellite") {
+    return { frames: times, url: (time) => `${host}${paths.get(time)}/256/{z}/{x}/{y}/0/0_0.png`, scheme: null };
+  }
+  const offered = (Array.isArray(section?.colorSchemes) ? section.colorSchemes : []).map((entry) => record(entry)?.id).filter((id2) => typeof id2 === "number");
+  const chosen = scheme ?? offered[0] ?? 0;
+  if (offered.length && !offered.includes(chosen)) {
+    throw new Error(`the server has no colour scheme ${chosen}, only ${offered.join(", ")}`);
+  }
+  return { frames: times, url: (time) => `${host}${paths.get(time)}/256/{z}/{x}/{y}/${chosen}/1_1.png`, scheme: chosen };
+}
+function frameOf(entry) {
+  const frame = record(entry);
+  return typeof frame?.time === "number" && typeof frame.path === "string" && frame.path.startsWith("/") ? [{ time: frame.time, path: frame.path }] : [];
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 
 // src/time.ts
@@ -33109,9 +33158,10 @@ function withQuery(base, params) {
 
 // src/sources.ts
 async function loadSource(options, now) {
-  const response = await fetch(capabilitiesUrl(options.url));
-  if (!response.ok) throw new Error(`the server answered ${response.status}`);
-  const layer = readCapabilities(await response.text(), options.layer);
+  return options.type === "rainviewer" ? loadRainViewer(options, now) : loadWms(options, now);
+}
+async function loadWms(options, now) {
+  const layer = readCapabilities(await fetchText(capabilitiesUrl(options.url)), options.layer);
   const style = options.style ? layer.styles.find((candidate) => candidate.name === options.style) : layer.styles[0];
   if (options.style && !style) {
     throw new Error(`the layer has no style ${options.style}, only ${layer.styles.map((candidate) => candidate.name).join(", ")}`);
@@ -33125,6 +33175,30 @@ async function loadSource(options, now) {
     legend: options.legend === false ? null : options.legend ?? style?.legend ?? null,
     attribution: options.attribution || layer.attribution
   };
+}
+async function loadRainViewer(options, now) {
+  const text2 = await fetchText(catalogueUrl(options.url));
+  let json;
+  try {
+    json = JSON.parse(text2);
+  } catch {
+    throw new Error("the answer isn't a RainViewer API catalogue");
+  }
+  const catalogue = readCatalogue(json, options.layer, options.colorScheme);
+  const frames = catalogue.frames.filter((time) => time >= now - options.historyMinutes * 60);
+  return {
+    frames,
+    step: stepOf({ times: frames, ranges: [] }, frames, options.stepMinutes * 60),
+    url: catalogue.url,
+    // The API has neither legends nor credits of its own.
+    legend: typeof options.legend === "string" ? options.legend : null,
+    attribution: options.attribution
+  };
+}
+async function fetchText(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`the server answered ${response.status}`);
+  return response.text();
 }
 
 // src/map-timeline-card.ts
@@ -33329,7 +33403,9 @@ var MapTimelineCard = class extends i4 {
                 >
                     <ha-icon icon=${this.playing ? "mdi:pause" : "mdi:play"}></ha-icon>
                 </button>
-                <span class=${e6({ time: true, ahead })}><b>${this.clock(this.at)}</b><span class="relative">${relative}</span></span>
+                <span class=${e6({ time: true, forecast: ahead })}
+                    ><b>${this.clock(this.at)}</b><span class="relative">${relative}</span></span
+                >
                 <span class="window">${this.windowText()}</span>
                 <button class="badge back" @click=${this.goLive} title=${this.text("controls.back_live")}>
                     <span class="dot"></span>${this.text("bar.live")}
@@ -33438,7 +33514,8 @@ var MapTimelineCard = class extends i4 {
         key: frameKey(i7, at3),
         source: i7,
         url: source.loaded.url(at3),
-        opacity: options.opacity
+        opacity: options.opacity,
+        maxZoom: options.maxZoom
       });
       if (frame !== null) frames.push(drawn(frame));
       const coming = next === void 0 ? null : frameAt(source.loaded.frames, next);
@@ -33768,8 +33845,8 @@ MapTimelineCard.styles = [
                 font-size: 13px;
                 color: var(--secondary-text-color);
             }
-            .time.ahead b,
-            .time.ahead .relative {
+            .time.forecast b,
+            .time.forecast .relative {
                 color: var(--mtc-forecast);
             }
             .track-wrap {

@@ -16,6 +16,8 @@ export interface DrawnFrame {
     source: number;
     url: string;
     opacity: number;
+    /** The deepest zoom its server has tiles for, drawn enlarged past it, or null for any. */
+    maxZoom: number | null;
 }
 
 export interface MapView {
@@ -289,7 +291,12 @@ export class TimelineMap {
     private addFrame(frame: DrawnFrame): void {
         const map = this.map!;
         if (map.getLayer(frame.key)) return;
-        map.addSource(frame.key, { type: "raster", tiles: [frame.url], tileSize: 256 });
+        map.addSource(frame.key, {
+            type: "raster",
+            tiles: [frame.url],
+            tileSize: 256,
+            ...(frame.maxZoom === null ? {} : { maxzoom: frame.maxZoom }),
+        });
         map.addLayer(
             {
                 id: frame.key,

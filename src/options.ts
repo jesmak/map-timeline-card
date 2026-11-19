@@ -7,8 +7,10 @@ import { browserLanguage, translate } from "./localize/localize";
 export const MAP_STYLES = ["default", "colorful", "natural", "muted", "gray", "toner"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
-export const SOURCE_TYPES = ["wms"] as const;
+export const SOURCE_TYPES = ["wms", "rainviewer"] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
+
+export const RAINVIEWER_LAYERS = ["radar", "satellite"] as const;
 
 /** Seven grid rows of a sections view, so the card ends on the rows unless told otherwise. */
 export const DEFAULT_MAP_HEIGHT = 440;
@@ -32,9 +34,14 @@ export interface SourceOptions {
     /** An mdi icon for its chip, or "" for the type's own. */
     icon: string;
     url: string;
+    /** A WMS layer's name, or a RainViewer API's `radar` or `satellite`. */
     layer: string;
-    /** The server's style to draw with, or "" for the first it lists. */
+    /** A WMS server's style to draw with, or "" for the first it lists. */
     style: string;
+    /** A RainViewer API's colour scheme, or null for the first it lists. */
+    colorScheme: number | null;
+    /** The deepest zoom its server has tiles for, drawn enlarged past it, or null for any. */
+    maxZoom: number | null;
     historyMinutes: number;
     opacity: number;
     /** A legend image of the user's own, false for none, or null for the source's own. */
@@ -81,7 +88,12 @@ function parseSource(source: Record<string, unknown>, index: number): SourceOpti
     const type = parseChoice(source.type, SOURCE_TYPES, undefined, "type", where);
     const url = typeof source.url === "string" ? source.url.trim() : "";
     if (!/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
-    const layer = typeof source.layer === "string" ? source.layer.trim() : "";
+    const layer =
+        type === "rainviewer"
+            ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where)
+            : typeof source.layer === "string"
+              ? source.layer.trim()
+              : "";
     if (!layer) throw invalid("layer", where);
     return {
         type,
@@ -90,6 +102,8 @@ function parseSource(source: Record<string, unknown>, index: number): SourceOpti
         url,
         layer,
         style: text(source.style),
+        colorScheme: parseOptional(source.color_scheme, (value) => Number.isInteger(value) && value >= 0, "color_scheme", where),
+        maxZoom: parseOptional(source.max_zoom, (value) => Number.isInteger(value) && value >= 0 && value <= 22, "max_zoom", where),
         historyMinutes: parseNumber(source.history_minutes, DEFAULT_HISTORY_MINUTES, (value) => value >= 0, "history_minutes", where),
         opacity: parseNumber(source.opacity, 1, (value) => value > 0 && value <= 1, "opacity", where),
         legend: parseLegend(source.legend, where),
@@ -139,6 +153,17 @@ function parseNumber(
     const parsed = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
     if (Number.isFinite(parsed) && valid(parsed)) return parsed;
     throw invalid(key, values);
+}
+
+/** A number left out, or left empty in YAML, is null. */
+function parseOptional(
+    value: unknown,
+    valid: (value: number) => boolean,
+    key: string,
+    values: Record<string, string | number>,
+): number | null {
+    if (value === undefined || value === null || value === "") return null;
+    return parseNumber(value, 0, valid, key, values);
 }
 
 function text(value: unknown): string {

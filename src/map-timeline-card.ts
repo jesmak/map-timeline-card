@@ -227,7 +227,9 @@ export class MapTimelineCard extends LitElement {
                 >
                     <ha-icon icon=${this.playing ? "mdi:pause" : "mdi:play"}></ha-icon>
                 </button>
-                <span class=${classMap({ time: true, ahead })}><b>${this.clock(this.at)}</b><span class="relative">${relative}</span></span>
+                <span class=${classMap({ time: true, forecast: ahead })}
+                    ><b>${this.clock(this.at)}</b><span class="relative">${relative}</span></span
+                >
                 <span class="window">${this.windowText()}</span>
                 <button class="badge back" @click=${this.goLive} title=${this.text("controls.back_live")}>
                     <span class="dot"></span>${this.text("bar.live")}
@@ -365,6 +367,7 @@ export class MapTimelineCard extends LitElement {
                 source: i,
                 url: source.loaded!.url(at),
                 opacity: options.opacity,
+                maxZoom: options.maxZoom,
             });
             if (frame !== null) frames.push(drawn(frame));
             const coming = next === undefined ? null : frameAt(source.loaded.frames, next);
@@ -757,8 +760,8 @@ export class MapTimelineCard extends LitElement {
                 font-size: 13px;
                 color: var(--secondary-text-color);
             }
-            .time.ahead b,
-            .time.ahead .relative {
+            .time.forecast b,
+            .time.forecast .relative {
                 color: var(--mtc-forecast);
             }
             .track-wrap {
