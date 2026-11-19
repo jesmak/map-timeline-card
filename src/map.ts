@@ -20,6 +20,16 @@ export interface DrawnFrame {
     maxZoom: number | null;
 }
 
+/** A point to draw, such as a lightning strike: an icon, or a dot without one. */
+export interface DrawnPoint {
+    key: string;
+    /** [longitude, latitude]. */
+    position: [number, number];
+    icon: string;
+    color: string;
+    opacity: number;
+}
+
 export interface MapView {
     center: [number, number];
     zoom: number;
@@ -56,6 +66,7 @@ export class TimelineMap {
     private map?: MapLibreMap;
     private readonly frames = new Map<string, FrameEntry>();
     private shown = new Set<string>();
+    private readonly points = new Map<string, Marker>();
     /** The frames last asked to be shown, some of which may still be loading. */
     private wanted: DrawnFrame[] = [];
     private attribution?: AttributionControl;
@@ -248,6 +259,45 @@ export class TimelineMap {
         this.shown = shown;
     }
 
+    /** Draws these points and removes the rest. Markers are kept between calls, so a point only fades as time moves. */
+    setPoints(points: DrawnPoint[]): void {
+        const map = this.map;
+        if (!map) return;
+        const seen = new Set<string>();
+        for (const point of points) {
+            seen.add(point.key);
+            let marker = this.points.get(point.key);
+            if (!marker) {
+                const element = document.createElement("div");
+                element.className = "point";
+                marker = new Marker({ element }).setLngLat(point.position).addTo(map);
+                this.points.set(point.key, marker);
+            }
+            const element = marker.getElement();
+            const look = `${point.icon}|${point.color}`;
+            if (element.dataset.look !== look) {
+                element.dataset.look = look;
+                element.style.color = point.color;
+                element.replaceChildren();
+                if (point.icon) {
+                    const icon = document.createElement("ha-icon");
+                    icon.setAttribute("icon", point.icon);
+                    element.append(icon);
+                } else {
+                    element.append(Object.assign(document.createElement("span"), { className: "dot" }));
+                }
+            }
+            marker.setLngLat(point.position);
+            // MapLibre owns a marker's opacity, as it hides one behind the globe's edge through it.
+            marker.setOpacity(String(point.opacity));
+        }
+        for (const [key, marker] of this.points) {
+            if (seen.has(key)) continue;
+            marker.remove();
+            this.points.delete(key);
+        }
+    }
+
     /** Credits as HTML, behind MapLibre's info button, which starts closed. The base map adds its own to them. */
     setAttribution(credits: string[]): void {
         const text = credits.join(" · ");
@@ -284,6 +334,7 @@ export class TimelineMap {
         this.map?.remove();
         this.map = undefined;
         this.frames.clear();
+        this.points.clear();
         this.wanted = [];
     }
 

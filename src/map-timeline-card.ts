@@ -8,10 +8,11 @@ import { property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import maplibreCss from "maplibre-gl/dist/maplibre-gl.css?raw";
 
+import { eventOpacity, geoEvents, type GeoEvent } from "./geolocation";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows } from "./height";
 import { browserLanguage, translate } from "./localize/localize";
-import { frameKey, TimelineMap, type DrawnFrame, type MapView } from "./map";
+import { frameKey, TimelineMap, type DrawnFrame, type DrawnPoint, type MapView } from "./map";
 import { ensureToken, MapError } from "./map-tiles";
 import { readThemeColors } from "./map-theme";
 import { parseOptions, type CardOptions } from "./options";
@@ -255,6 +256,13 @@ export class MapTimelineCard extends LitElement {
                     ><span class="ahead"></span>
                 </div>
                 ${now > first && now < first + span ? html`<span class="now-tick" style="left:${at(now)}"></span>` : nothing}
+                ${this.options!.sources.flatMap((source, i) =>
+                    this.enabled[i] && source.type === "geo_location" && source.timelineMarks
+                        ? this.events(i)
+                              .filter((event) => event.time !== null && event.time >= first && event.time <= first + span)
+                              .map((event) => html`<span class="mark" style="left:${at(event.time!)};${colorStyle(source.color)}"></span>`)
+                        : [],
+                )}
                 <span class="handle" data-handle="0" style="left:${at(start)}"></span>
                 <span class="handle" data-handle="1" style="left:${at(end)}"></span>
                 <span class="knob" style="left:${at(this.at)}"></span>
@@ -279,6 +287,10 @@ export class MapTimelineCard extends LitElement {
                     note = this.text("chip.failed");
                     title = this.text("chip.error", { reason: state.error });
                     warn = true;
+                } else if (on && this.mode === "live" && source.type === "geo_location") {
+                    // Points have no frames to fall behind on, so their chip shows only how old the newest is.
+                    const times = this.events(i).flatMap((event) => (event.time === null ? [] : [event.time]));
+                    if (times.length) note = this.age(now - Math.max(...times));
                 } else if (on && this.mode === "live") {
                     if (!state.loaded) {
                         note = this.text("chip.loading");
@@ -345,8 +357,16 @@ export class MapTimelineCard extends LitElement {
 
     /** The timeline over the sources that are on and have been read. */
     private timeline(): Timeline | null {
-        const sources = this.sources.flatMap((source, i) => (this.enabled[i] && source.loaded ? [source.loaded] : []));
-        return buildTimeline(sources);
+        const images = this.sources.flatMap((source, i) => (this.enabled[i] && source.loaded ? [source.loaded] : []));
+        // A point source reaches from its history to now, past an image source's newest frame, which lags behind now, so
+        // the newest points are played too. Its step counts only without image sources, as points have no frames of their own.
+        const now = Date.now() / 1000;
+        const points = this.options!.sources.flatMap((source, i) =>
+            this.enabled[i] && source.type === "geo_location"
+                ? [{ frames: [now - source.historyMinutes * 60, now], step: images.length ? Infinity : source.stepMinutes * 60 }]
+                : [],
+        );
+        return buildTimeline([...images, ...points]);
     }
 
     /** Puts on the map what the card shows now: each source's newest frame live, or its frame at the time played. */
@@ -374,12 +394,35 @@ export class MapTimelineCard extends LitElement {
             if (coming !== null && coming !== frame) ahead.push(drawn(coming));
         });
         this.map.show(frames, ahead);
+
+        const points: DrawnPoint[] = [];
+        this.options.sources.forEach((source, i) => {
+            if (!this.enabled[i] || source.type !== "geo_location") return;
+            for (const event of this.events(i)) {
+                const opacity = eventOpacity(event, time, source.visibleMinutes * 60, this.mode === "live");
+                if (opacity > 0) {
+                    points.push({ key: `${i}:${event.key}`, position: event.position, icon: source.icon, color: source.color, opacity });
+                }
+            }
+        });
+        this.map.setPoints(points);
+
         this.map.setAttribution(
-            this.options.sources.flatMap((_source, i) => {
-                const credit = this.enabled[i] ? this.sources[i]?.loaded?.attribution : "";
+            this.options.sources.flatMap((source, i) => {
+                const credit = !this.enabled[i]
+                    ? ""
+                    : source.type === "geo_location"
+                      ? source.attribution
+                      : this.sources[i]?.loaded?.attribution;
                 return credit ? [escapeHtml(credit)] : [];
             }),
         );
+    }
+
+    /** A geo_location source's entities, as they are in Home Assistant now. */
+    private events(i: number): GeoEvent[] {
+        const source = this.options!.sources[i];
+        return this.hass ? geoEvents(this.hass.states, source.entitySource, source.timeAttribute) : [];
     }
 
     private toggleSource(i: number): void {
@@ -436,6 +479,8 @@ export class MapTimelineCard extends LitElement {
      */
     private startSources(): void {
         this.sources.forEach((_source, i) => {
+            // A geo_location source is Home Assistant's own state, which comes with every update of the card.
+            if (this.options!.sources[i].type === "geo_location") return;
             if (!this.timers.has(i) && !this.reading.has(i)) void this.readSource(i);
         });
     }
@@ -612,6 +657,28 @@ export class MapTimelineCard extends LitElement {
                 color: var(--primary-text-color);
                 --mdc-icon-size: 22px;
                 filter: drop-shadow(0 0 2px var(--card-background-color, #000));
+            }
+            .point {
+                color: var(--primary-color);
+                display: grid;
+                place-items: center;
+                --mdc-icon-size: 20px;
+                filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px rgb(0 0 0 / 50%));
+            }
+            .point .dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+            .mark {
+                position: absolute;
+                top: 1px;
+                width: 4px;
+                height: 6px;
+                margin-left: -2px;
+                border-radius: 1px;
+                background: var(--point-color, var(--primary-color));
             }
             button {
                 font: inherit;
@@ -893,6 +960,11 @@ function previousOf(times: number[], time: number): number {
 
 function nextOf(times: number[], time: number): number {
     return times.find((candidate) => candidate > time) ?? time;
+}
+
+/** A colour of the user's own, or the theme's primary colour through the stylesheet. */
+function colorStyle(color: string): string {
+    return color ? `--point-color:${color}` : "";
 }
 
 function escapeHtml(text: string): string {

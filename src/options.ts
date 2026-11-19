@@ -7,7 +7,7 @@ import { browserLanguage, translate } from "./localize/localize";
 export const MAP_STYLES = ["default", "colorful", "natural", "muted", "gray", "toner"] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
-export const SOURCE_TYPES = ["wms", "rainviewer"] as const;
+export const SOURCE_TYPES = ["wms", "rainviewer", "geo_location"] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
 export const RAINVIEWER_LAYERS = ["radar", "satellite"] as const;
@@ -24,6 +24,9 @@ export const DEFAULT_HISTORY_MINUTES = 120;
 export const DEFAULT_STALE_STEPS = 3;
 /** The step of a source whose times give no period, such as a WMS range with only a start and an end. */
 export const DEFAULT_STEP_MINUTES = 5;
+/** How long a geo_location entity stays on the map after its time. */
+export const DEFAULT_VISIBLE_MINUTES = 30;
+export const DEFAULT_TIME_ATTRIBUTE = "publication_date";
 
 const ENTITY_ID = /^[a-z_]+\.[a-z0-9_]+$/;
 
@@ -50,6 +53,15 @@ export interface SourceOptions {
     attribution: string;
     staleSteps: number;
     stepMinutes: number;
+    /** A geo_location source's entities by their `source` attribute, or "" for every one. */
+    entitySource: string;
+    /** The attribute a geo_location entity's time is in. */
+    timeAttribute: string;
+    visibleMinutes: number;
+    /** A mark above the timeline for each timed point. */
+    timelineMarks: boolean;
+    /** A point's colour, as a hex colour, or "" for the theme's primary colour. */
+    color: string;
 }
 
 export interface CardOptions {
@@ -86,18 +98,20 @@ export function parseOptions(raw: unknown): CardOptions {
 function parseSource(source: Record<string, unknown>, index: number): SourceOptions {
     const where = { n: index + 1 };
     const type = parseChoice(source.type, SOURCE_TYPES, undefined, "type", where);
-    const url = typeof source.url === "string" ? source.url.trim() : "";
-    if (!/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
+    // A geo_location source reads Home Assistant's own entities, and has neither an address nor a layer.
+    const url = type === "geo_location" ? "" : text(source.url);
+    if (type !== "geo_location" && !/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
     const layer =
         type === "rainviewer"
             ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where)
-            : typeof source.layer === "string"
-              ? source.layer.trim()
+            : type === "wms"
+              ? text(source.layer)
               : "";
-    if (!layer) throw invalid("layer", where);
+    if (type === "wms" && !layer) throw invalid("layer", where);
+    const entitySource = text(source.source);
     return {
         type,
-        name: text(source.name) || layer,
+        name: text(source.name) || layer || entitySource || "geo_location",
         icon: text(source.icon),
         url,
         layer,
@@ -110,7 +124,25 @@ function parseSource(source: Record<string, unknown>, index: number): SourceOpti
         attribution: text(source.attribution),
         staleSteps: parseNumber(source.stale_steps, DEFAULT_STALE_STEPS, (value) => value >= 1, "stale_steps", where),
         stepMinutes: parseNumber(source.step_minutes, DEFAULT_STEP_MINUTES, (value) => value >= 1, "step_minutes", where),
+        entitySource,
+        timeAttribute: text(source.time_attribute) || DEFAULT_TIME_ATTRIBUTE,
+        visibleMinutes: parseNumber(source.visible_minutes, DEFAULT_VISIBLE_MINUTES, (value) => value > 0, "visible_minutes", where),
+        timelineMarks: parseFlag(source.timeline_marks, "timeline_marks", where),
+        color: parseColor(source.color, where),
     };
+}
+
+function parseFlag(value: unknown, key: string, where: { n: number }): boolean {
+    if (value === undefined || value === null) return false;
+    if (typeof value === "boolean") return value;
+    throw invalid(key, where);
+}
+
+/** Hex only: the colour is given to MapLibre's markers and the timeline's marks alike. */
+function parseColor(value: unknown, where: { n: number }): string {
+    if (value === undefined || value === null || value === "") return "";
+    if (typeof value === "string" && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())) return value.trim();
+    throw invalid("color", where);
 }
 
 function parseZone(value: unknown): string {
