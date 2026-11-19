@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { readWmtsCapabilities } from "../src/wmts";
+import { listWmtsLayers, readWmtsCapabilities } from "../src/wmts";
 
 // As in wms.test.ts: read from the repo's root, the XML declaration taken off for happy-dom.
 const fixture = (name: string) => readFileSync(`tests/fixtures/${name}.xml`, "utf8").replace(/^<\?xml[^>]*\?>/, "");
@@ -78,5 +78,12 @@ describe("readWmtsCapabilities", () => {
         expect(() => readWmtsCapabilities(report, GOES)).toThrow("the server says: Service is disabled");
         expect(() => readWmtsCapabilities("<html></html>", GOES)).toThrow("the answer isn't a WMTS capabilities document");
         expect(() => readWmtsCapabilities(fixture("gibs-goes-ir"), "rain")).toThrow("the server has no layer rain");
+    });
+});
+
+describe("listWmtsLayers", () => {
+    it("lists NASA's GOES layer, which has a time, and none of DWD's, which don't", () => {
+        expect(listWmtsLayers(fixture("gibs-goes-ir"))).toEqual([GOES]);
+        expect(listWmtsLayers(fixture("dwd-wmts"))).toEqual([]);
     });
 });

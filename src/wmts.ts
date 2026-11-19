@@ -114,6 +114,17 @@ export function readWmtsCapabilities(xml: string, name: string): WmtsLayer {
     };
 }
 
+/** The identifiers of the layers a WMTS capabilities document offers with a time dimension, for the editor. */
+export function listWmtsLayers(xml: string): string[] {
+    const root = new DOMParser().parseFromString(xml, "text/xml").documentElement;
+    const contents = root?.localName === "Capabilities" ? child(root, "Contents") : undefined;
+    if (!contents) return [];
+    return children(contents, "Layer")
+        .filter((layer) => children(layer, "Dimension").some((dimension) => text(child(dimension, "Identifier")).toLowerCase() === "time"))
+        .map((layer) => text(child(layer, "Identifier")))
+        .filter(Boolean);
+}
+
 /**
  * A tile matrix set's levels, when they are Web Mercator's from zoom 0 down without a gap, in 256 pixel tiles, each
  * named by a common prefix and its zoom ("5" in NASA's sets, "EPSG:900913:5" in GeoServer's). Null for any other set,

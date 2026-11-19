@@ -9,6 +9,7 @@ import { classMap } from "lit/directives/class-map.js";
 import maplibreCss from "maplibre-gl/dist/maplibre-gl.css?raw";
 
 import type { GeoJsonData } from "./geojson";
+import "./editor";
 import { eventOpacity, geoEvents } from "./geolocation";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows } from "./height";
@@ -95,6 +96,10 @@ export class MapTimelineCard extends LitElement {
     /** The next read of each source, by its place, and the sources being read now. Replaced when the sources change. */
     private timers = new Map<number, ReturnType<typeof setTimeout>>();
     private reading = new Set<number>();
+
+    public static getConfigElement(): HTMLElement {
+        return document.createElement("map-timeline-card-editor");
+    }
 
     public static getStubConfig(): Record<string, unknown> {
         return { sources: [] };

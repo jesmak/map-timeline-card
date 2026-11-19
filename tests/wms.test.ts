@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { capabilitiesUrl, readCapabilities, tileUrl } from "../src/wms";
+import { capabilitiesUrl, listWmsLayers, readCapabilities, tileUrl } from "../src/wms";
 
 // Read from the repo's root, where the tests run: under happy-dom import.meta.url isn't a file URL. The XML declaration
 // goes, as happy-dom refuses GeoMet's `version='1.0'` in single quotes, which XML allows and browsers read.
@@ -98,5 +98,20 @@ describe("tileUrl", () => {
         expect(params.get("layers")).toBe("rain");
         expect(params.get("styles")).toBe("");
         expect(params.get("transparent")).toBe("true");
+    });
+});
+
+describe("listWmsLayers", () => {
+    it("lists the layers with a time dimension, their own or a parent's, and none without", () => {
+        const xml = `<WMS_Capabilities version="1.3.0" xmlns="http://www.opengis.net/wms"><Capability><Layer>
+            <Layer><Name>still</Name></Layer>
+            <Layer><Dimension name="time">2026-11-19T12:00:00Z</Dimension><Name>rain</Name><Layer><Name>rain_child</Name></Layer></Layer>
+        </Layer></Capability></WMS_Capabilities>`;
+        expect(listWmsLayers(xml)).toEqual(["rain", "rain_child"]);
+    });
+
+    it("finds FMI's radar among its layers, and nothing in what isn't a capabilities document", () => {
+        expect(listWmsLayers(fixture("fmi-radar"))).toContain("suomi_dbz_eureffin");
+        expect(listWmsLayers("<html></html>")).toEqual([]);
     });
 });

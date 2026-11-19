@@ -78,6 +78,20 @@ export function readCapabilities(xml: string, name: string): WmsLayer {
     };
 }
 
+/** The names of the layers a WMS 1.3.0 capabilities document offers with a time dimension, their own or inherited, for the editor. */
+export function listWmsLayers(xml: string): string[] {
+    const root = new DOMParser().parseFromString(xml, "text/xml").documentElement;
+    if (!root || root.localName !== "WMS_Capabilities") return [];
+    return [...root.querySelectorAll("*")]
+        .filter((element) => element.localName === "Layer" && child(element, "Name")?.textContent?.trim())
+        .filter((layer) =>
+            ancestry(layer).some((element) =>
+                children(element, "Dimension").some((dimension) => dimension.getAttribute("name")?.toLowerCase() === "time"),
+            ),
+        )
+        .map((layer) => child(layer, "Name")!.textContent!.trim());
+}
+
 function legendOf(style: Element): string | null {
     const resource = child(child(style, "LegendURL") ?? style, "OnlineResource");
     return resource?.getAttributeNS(XLINK, "href") || resource?.getAttribute("xlink:href") || null;
