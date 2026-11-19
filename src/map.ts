@@ -27,6 +27,7 @@ export interface DrawnPoint {
     /** [longitude, latitude]. */
     position: [number, number];
     icon: string;
+    /** A CSS colour, drawn into the point's image. */
     color: string;
     opacity: number;
 }
@@ -48,6 +49,15 @@ const FRAME_KEY = /^s\d+-\d+$/;
 const SHAPES = "shapes";
 const SHAPE_FILL = "shapes-fill";
 const SHAPE_LINE = "shapes-line";
+/** Every source's points are one GeoJSON source, drawn above everything else, as markers were. */
+const POINTS = "points";
+
+/** A point's icon in CSS pixels, its shadow's margin around it, and how much finer than that its image is drawn. */
+const ICON_PX = 20;
+const SHADOW_PX = 3;
+const PIXEL_RATIO = 2;
+/** How long Home Assistant gets to find an icon before its point is drawn as a dot. */
+const ICON_TIMEOUT_MS = 5000;
 
 /** A frame's name on the map: its source's place in the config and its time. */
 export function frameKey(source: number, time: number): string {
@@ -78,7 +88,11 @@ export class TimelineMap {
     private map?: MapLibreMap;
     private readonly frames = new Map<string, FrameEntry>();
     private shown = new Set<string>();
-    private readonly points = new Map<string, Marker>();
+    private wantedPoints: DrawnPoint[] = [];
+    private pointData: FeatureCollection = { type: "FeatureCollection", features: [] };
+    private pointsKey = "";
+    /** Each icon and colour's image, or null while it is being drawn. Kept for a new style, which drops them. */
+    private readonly images = new Map<string, ImageData | null>();
     private shapes: FeatureCollection = { type: "FeatureCollection", features: [] };
     private drawnShapes: DrawnShape[] = [];
     /** The frames last asked to be shown, some of which may still be loading. */
@@ -169,6 +183,7 @@ export class TimelineMap {
             map.on("style.load", () => {
                 this.styleReady = true;
                 this.addShapes();
+                this.addPoints();
                 for (const { frame } of this.frames.values()) this.addFrame(frame);
                 // They come back hidden, and what is shown is decided again rather than waiting for their tiles' events.
                 this.shown = new Set();
@@ -274,43 +289,45 @@ export class TimelineMap {
         this.shown = shown;
     }
 
-    /** Draws these points and removes the rest. Markers are kept between calls, so a point only fades as time moves. */
+    /**
+     * Draws these points, replacing those drawn before, as one symbol layer, so thousands of them still move with the
+     * map. A point waits off the map until its image is ready, and is handed to MapLibre again only when something
+     * about it changes, its fade included.
+     */
     setPoints(points: DrawnPoint[]): void {
-        const map = this.map;
-        if (!map) return;
-        const seen = new Set<string>();
-        for (const point of points) {
-            seen.add(point.key);
-            let marker = this.points.get(point.key);
-            if (!marker) {
-                const element = document.createElement("div");
-                element.className = "point";
-                marker = new Marker({ element }).setLngLat(point.position).addTo(map);
-                this.points.set(point.key, marker);
-            }
-            const element = marker.getElement();
-            const look = `${point.icon}|${point.color}`;
-            if (element.dataset.look !== look) {
-                element.dataset.look = look;
-                element.style.color = point.color;
-                element.replaceChildren();
-                if (point.icon) {
-                    const icon = document.createElement("ha-icon");
-                    icon.setAttribute("icon", point.icon);
-                    element.append(icon);
-                } else {
-                    element.append(Object.assign(document.createElement("span"), { className: "dot" }));
-                }
-            }
-            marker.setLngLat(point.position);
-            // MapLibre owns a marker's opacity, as it hides one behind the globe's edge through it.
-            marker.setOpacity(String(point.opacity));
-        }
-        for (const [key, marker] of this.points) {
-            if (seen.has(key)) continue;
-            marker.remove();
-            this.points.delete(key);
-        }
+        this.wantedPoints = points;
+        for (const point of points) this.loadImage(point.icon, point.color);
+        this.updatePoints();
+    }
+
+    private updatePoints(): void {
+        const ready = this.wantedPoints.filter((point) => this.images.get(imageName(point.icon, point.color)));
+        const key = ready.map((point) => `${point.key}|${imageName(point.icon, point.color)}|${point.opacity.toFixed(2)}`).join(",");
+        if (key === this.pointsKey) return;
+        this.pointsKey = key;
+        this.pointData = {
+            type: "FeatureCollection",
+            features: ready.map((point) => ({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: point.position },
+                properties: { image: imageName(point.icon, point.color), opacity: point.opacity },
+            })),
+        };
+        if (this.styleReady) (this.map?.getSource(POINTS) as GeoJSONSource | undefined)?.setData(this.pointData);
+    }
+
+    /** Draws a point's image once per icon and colour, and adds it to the map when it is ready. */
+    private loadImage(icon: string, color: string): void {
+        const name = imageName(icon, color);
+        if (this.images.has(name)) return;
+        this.images.set(name, null);
+        void iconPath(icon).then((path) => {
+            if (this.destroyed) return;
+            const image = drawPoint(path, color);
+            this.images.set(name, image);
+            if (this.styleReady && this.map && !this.map.hasImage(name)) this.map.addImage(name, image, { pixelRatio: PIXEL_RATIO });
+            this.updatePoints();
+        });
     }
 
     /**
@@ -368,7 +385,7 @@ export class TimelineMap {
         this.map?.remove();
         this.map = undefined;
         this.frames.clear();
-        this.points.clear();
+        this.wantedPoints = [];
         this.wanted = [];
     }
 
@@ -408,6 +425,26 @@ export class TimelineMap {
             },
             label,
         );
+    }
+
+    /** The points' images, source and layer, above everything. The freshest points are drawn over the faded ones. */
+    private addPoints(): void {
+        const map = this.map!;
+        for (const [name, image] of this.images) if (image && !map.hasImage(name)) map.addImage(name, image, { pixelRatio: PIXEL_RATIO });
+        if (map.getSource(POINTS)) return;
+        map.addSource(POINTS, { type: "geojson", data: this.pointData });
+        map.addLayer({
+            id: POINTS,
+            type: "symbol",
+            source: POINTS,
+            layout: {
+                "icon-image": ["get", "image"],
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+                "symbol-sort-key": ["get", "opacity"],
+            },
+            paint: { "icon-opacity": ["get", "opacity"] },
+        });
     }
 
     /** Adds a frame's layer hidden, under the base map's labels and in its source's place among the others. */
@@ -459,4 +496,55 @@ export class TimelineMap {
             this.frames.delete(key);
         }
     }
+}
+
+function imageName(icon: string, color: string): string {
+    return `point|${icon}|${color}`;
+}
+
+/**
+ * An mdi icon's path, as Home Assistant's own ha-icon finds it, as the card can't carry every icon's. Null for no icon,
+ * and for one Home Assistant doesn't find in time, which then is drawn as a dot.
+ */
+async function iconPath(icon: string): Promise<string | null> {
+    if (!icon) return null;
+    const element = document.createElement("ha-icon");
+    element.setAttribute("icon", icon);
+    element.style.cssText = "position:absolute;visibility:hidden;pointer-events:none";
+    document.body.append(element);
+    try {
+        const started = Date.now();
+        while (Date.now() - started < ICON_TIMEOUT_MS) {
+            const path = (element.shadowRoot?.querySelector("ha-svg-icon") as { path?: string } | null)?.path;
+            if (path) return path;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        return null;
+    } finally {
+        element.remove();
+    }
+}
+
+/** A point's image: its icon, or a dot without one, in its colour with a dark shadow that keeps it apart from the map. */
+function drawPoint(path: string | null, color: string): ImageData {
+    const size = (ICON_PX + 2 * SHADOW_PX) * PIXEL_RATIO;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d")!;
+    context.scale(PIXEL_RATIO, PIXEL_RATIO);
+    context.shadowColor = "rgb(0 0 0 / 70%)";
+    context.shadowBlur = 2 * PIXEL_RATIO;
+    context.fillStyle = color;
+    if (path) {
+        context.translate(SHADOW_PX, SHADOW_PX);
+        // mdi's paths are drawn on a 24 pixel grid.
+        context.scale(ICON_PX / 24, ICON_PX / 24);
+        context.fill(new Path2D(path));
+    } else {
+        context.beginPath();
+        context.arc(ICON_PX / 2 + SHADOW_PX, ICON_PX / 2 + SHADOW_PX, 4, 0, 2 * Math.PI);
+        context.fill();
+    }
+    return context.getImageData(0, 0, size, size);
 }

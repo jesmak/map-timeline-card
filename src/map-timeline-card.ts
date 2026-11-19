@@ -410,19 +410,25 @@ export class MapTimelineCard extends LitElement {
             if (!this.enabled[i] || !isFeatureSource(source.type)) return;
             const visibleFor = source.visibleMinutes * 60;
             const features = this.features(i);
+            // Points and shapes are drawn by MapLibre, which can't read a CSS variable, so the theme's primary colour is
+            // looked up for those that have no colour of their own.
+            const colorOf = (own: string) => own || source.color || (primary ||= this.primaryColor());
             for (const event of features.points) {
                 const opacity = eventOpacity(event, time, visibleFor, live, timed(source));
                 if (opacity > 0) {
-                    const color = event.color || source.color;
-                    points.push({ key: `${i}:${event.key}`, position: event.position, icon: source.icon, color, opacity });
+                    points.push({
+                        key: `${i}:${event.key}`,
+                        position: event.position,
+                        icon: source.icon,
+                        color: colorOf(event.color),
+                        opacity,
+                    });
                 }
             }
-            // A shape doesn't fade, as one half faded would look half over. It is drawn in a colour MapLibre can read, so
-            // the theme's primary colour is looked up rather than given as a CSS variable.
+            // A shape doesn't fade, as one half faded would look half over.
             for (const shape of features.shapes) {
-                if (eventOpacity(shape, time, visibleFor, live, timed(source)) === 0) continue;
-                primary ||= getComputedStyle(this).getPropertyValue("--primary-color").trim() || DEFAULT_PRIMARY;
-                shapes.push({ feature: shape.feature, color: source.color || primary });
+                if (eventOpacity(shape, time, visibleFor, live, timed(source)) > 0)
+                    shapes.push({ feature: shape.feature, color: colorOf("") });
             }
         });
         this.map.setPoints(points);
@@ -438,6 +444,10 @@ export class MapTimelineCard extends LitElement {
                 return credit ? [escapeHtml(credit)] : [];
             }),
         );
+    }
+
+    private primaryColor(): string {
+        return getComputedStyle(this).getPropertyValue("--primary-color").trim() || DEFAULT_PRIMARY;
     }
 
     /** A feature source's points and shapes: a geo_location source's entities as they are in Home Assistant now, a GeoJSON source's as last read. */
@@ -689,19 +699,6 @@ export class MapTimelineCard extends LitElement {
                 color: var(--primary-text-color);
                 --mdc-icon-size: 22px;
                 filter: drop-shadow(0 0 2px var(--card-background-color, #000));
-            }
-            .point {
-                color: var(--primary-color);
-                display: grid;
-                place-items: center;
-                --mdc-icon-size: 20px;
-                filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px rgb(0 0 0 / 50%));
-            }
-            .point .dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: currentColor;
             }
             .mark {
                 position: absolute;

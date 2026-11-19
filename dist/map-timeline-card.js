@@ -32722,6 +32722,11 @@ var FRAME_KEY = /^s\d+-\d+$/;
 var SHAPES = "shapes";
 var SHAPE_FILL = "shapes-fill";
 var SHAPE_LINE = "shapes-line";
+var POINTS = "points";
+var ICON_PX = 20;
+var SHADOW_PX = 3;
+var PIXEL_RATIO = 2;
+var ICON_TIMEOUT_MS = 5e3;
 function frameKey(source, time) {
   return `s${source}-${time}`;
 }
@@ -32740,7 +32745,11 @@ var TimelineMap = class {
     this.start = start;
     this.frames = /* @__PURE__ */ new Map();
     this.shown = /* @__PURE__ */ new Set();
-    this.points = /* @__PURE__ */ new Map();
+    this.wantedPoints = [];
+    this.pointData = { type: "FeatureCollection", features: [] };
+    this.pointsKey = "";
+    /** Each icon and colour's image, or null while it is being drawn. Kept for a new style, which drops them. */
+    this.images = /* @__PURE__ */ new Map();
     this.shapes = { type: "FeatureCollection", features: [] };
     this.drawnShapes = [];
     /** The frames last asked to be shown, some of which may still be loading. */
@@ -32803,6 +32812,7 @@ var TimelineMap = class {
       map.on("style.load", () => {
         this.styleReady = true;
         this.addShapes();
+        this.addPoints();
         for (const { frame } of this.frames.values()) this.addFrame(frame);
         this.shown = /* @__PURE__ */ new Set();
         this.apply();
@@ -32896,42 +32906,43 @@ var TimelineMap = class {
     }
     this.shown = shown;
   }
-  /** Draws these points and removes the rest. Markers are kept between calls, so a point only fades as time moves. */
+  /**
+   * Draws these points, replacing those drawn before, as one symbol layer, so thousands of them still move with the
+   * map. A point waits off the map until its image is ready, and is handed to MapLibre again only when something
+   * about it changes, its fade included.
+   */
   setPoints(points) {
-    const map = this.map;
-    if (!map) return;
-    const seen = /* @__PURE__ */ new Set();
-    for (const point of points) {
-      seen.add(point.key);
-      let marker = this.points.get(point.key);
-      if (!marker) {
-        const element2 = document.createElement("div");
-        element2.className = "point";
-        marker = new ZR({ element: element2 }).setLngLat(point.position).addTo(map);
-        this.points.set(point.key, marker);
-      }
-      const element = marker.getElement();
-      const look = `${point.icon}|${point.color}`;
-      if (element.dataset.look !== look) {
-        element.dataset.look = look;
-        element.style.color = point.color;
-        element.replaceChildren();
-        if (point.icon) {
-          const icon = document.createElement("ha-icon");
-          icon.setAttribute("icon", point.icon);
-          element.append(icon);
-        } else {
-          element.append(Object.assign(document.createElement("span"), { className: "dot" }));
-        }
-      }
-      marker.setLngLat(point.position);
-      marker.setOpacity(String(point.opacity));
-    }
-    for (const [key, marker] of this.points) {
-      if (seen.has(key)) continue;
-      marker.remove();
-      this.points.delete(key);
-    }
+    this.wantedPoints = points;
+    for (const point of points) this.loadImage(point.icon, point.color);
+    this.updatePoints();
+  }
+  updatePoints() {
+    const ready = this.wantedPoints.filter((point) => this.images.get(imageName(point.icon, point.color)));
+    const key = ready.map((point) => `${point.key}|${imageName(point.icon, point.color)}|${point.opacity.toFixed(2)}`).join(",");
+    if (key === this.pointsKey) return;
+    this.pointsKey = key;
+    this.pointData = {
+      type: "FeatureCollection",
+      features: ready.map((point) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: point.position },
+        properties: { image: imageName(point.icon, point.color), opacity: point.opacity }
+      }))
+    };
+    if (this.styleReady) this.map?.getSource(POINTS)?.setData(this.pointData);
+  }
+  /** Draws a point's image once per icon and colour, and adds it to the map when it is ready. */
+  loadImage(icon, color2) {
+    const name = imageName(icon, color2);
+    if (this.images.has(name)) return;
+    this.images.set(name, null);
+    void iconPath(icon).then((path) => {
+      if (this.destroyed) return;
+      const image = drawPoint(path, color2);
+      this.images.set(name, image);
+      if (this.styleReady && this.map && !this.map.hasImage(name)) this.map.addImage(name, image, { pixelRatio: PIXEL_RATIO });
+      this.updatePoints();
+    });
   }
   /**
    * Draws these lines and areas, replacing those drawn before. They are handed to MapLibre only when they change, as
@@ -32980,7 +32991,7 @@ var TimelineMap = class {
     this.map?.remove();
     this.map = void 0;
     this.frames.clear();
-    this.points.clear();
+    this.wantedPoints = [];
     this.wanted = [];
   }
   /**
@@ -33019,6 +33030,25 @@ var TimelineMap = class {
       },
       label
     );
+  }
+  /** The points' images, source and layer, above everything. The freshest points are drawn over the faded ones. */
+  addPoints() {
+    const map = this.map;
+    for (const [name, image] of this.images) if (image && !map.hasImage(name)) map.addImage(name, image, { pixelRatio: PIXEL_RATIO });
+    if (map.getSource(POINTS)) return;
+    map.addSource(POINTS, { type: "geojson", data: this.pointData });
+    map.addLayer({
+      id: POINTS,
+      type: "symbol",
+      source: POINTS,
+      layout: {
+        "icon-image": ["get", "image"],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "symbol-sort-key": ["get", "opacity"]
+      },
+      paint: { "icon-opacity": ["get", "opacity"] }
+    });
   }
   /** Adds a frame's layer hidden, under the base map's labels and in its source's place among the others. */
   addFrame(frame) {
@@ -33065,6 +33095,48 @@ var TimelineMap = class {
     }
   }
 };
+function imageName(icon, color2) {
+  return `point|${icon}|${color2}`;
+}
+async function iconPath(icon) {
+  if (!icon) return null;
+  const element = document.createElement("ha-icon");
+  element.setAttribute("icon", icon);
+  element.style.cssText = "position:absolute;visibility:hidden;pointer-events:none";
+  document.body.append(element);
+  try {
+    const started = Date.now();
+    while (Date.now() - started < ICON_TIMEOUT_MS) {
+      const path = element.shadowRoot?.querySelector("ha-svg-icon")?.path;
+      if (path) return path;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return null;
+  } finally {
+    element.remove();
+  }
+}
+function drawPoint(path, color2) {
+  const size = (ICON_PX + 2 * SHADOW_PX) * PIXEL_RATIO;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  context.scale(PIXEL_RATIO, PIXEL_RATIO);
+  context.shadowColor = "rgb(0 0 0 / 70%)";
+  context.shadowBlur = 2 * PIXEL_RATIO;
+  context.fillStyle = color2;
+  if (path) {
+    context.translate(SHADOW_PX, SHADOW_PX);
+    context.scale(ICON_PX / 24, ICON_PX / 24);
+    context.fill(new Path2D(path));
+  } else {
+    context.beginPath();
+    context.arc(ICON_PX / 2 + SHADOW_PX, ICON_PX / 2 + SHADOW_PX, 4, 0, 2 * Math.PI);
+    context.fill();
+  }
+  return context.getImageData(0, 0, size, size);
+}
 
 // src/xyz.ts
 var TIME_PLACEHOLDER = /\{time:([^}]+)\}/g;
@@ -33913,17 +33985,22 @@ var MapTimelineCard = class extends i4 {
       if (!this.enabled[i7] || !isFeatureSource(source.type)) return;
       const visibleFor = source.visibleMinutes * 60;
       const features = this.features(i7);
+      const colorOf = (own) => own || source.color || (primary || (primary = this.primaryColor()));
       for (const event of features.points) {
         const opacity = eventOpacity(event, time, visibleFor, live, timed(source));
         if (opacity > 0) {
-          const color2 = event.color || source.color;
-          points.push({ key: `${i7}:${event.key}`, position: event.position, icon: source.icon, color: color2, opacity });
+          points.push({
+            key: `${i7}:${event.key}`,
+            position: event.position,
+            icon: source.icon,
+            color: colorOf(event.color),
+            opacity
+          });
         }
       }
       for (const shape of features.shapes) {
-        if (eventOpacity(shape, time, visibleFor, live, timed(source)) === 0) continue;
-        primary || (primary = getComputedStyle(this).getPropertyValue("--primary-color").trim() || DEFAULT_PRIMARY);
-        shapes.push({ feature: shape.feature, color: source.color || primary });
+        if (eventOpacity(shape, time, visibleFor, live, timed(source)) > 0)
+          shapes.push({ feature: shape.feature, color: colorOf("") });
       }
     });
     this.map.setPoints(points);
@@ -33934,6 +34011,9 @@ var MapTimelineCard = class extends i4 {
         return credit ? [escapeHtml(credit)] : [];
       })
     );
+  }
+  primaryColor() {
+    return getComputedStyle(this).getPropertyValue("--primary-color").trim() || DEFAULT_PRIMARY;
   }
   /** A feature source's points and shapes: a geo_location source's entities as they are in Home Assistant now, a GeoJSON source's as last read. */
   features(i7) {
@@ -34118,19 +34198,6 @@ MapTimelineCard.styles = [
                 color: var(--primary-text-color);
                 --mdc-icon-size: 22px;
                 filter: drop-shadow(0 0 2px var(--card-background-color, #000));
-            }
-            .point {
-                color: var(--primary-color);
-                display: grid;
-                place-items: center;
-                --mdc-icon-size: 20px;
-                filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px rgb(0 0 0 / 50%));
-            }
-            .point .dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: currentColor;
             }
             .mark {
                 position: absolute;
