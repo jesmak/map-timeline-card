@@ -163,7 +163,8 @@ pattern of `YYYY`, `MM`, `DD`, `HH`, `mm` and `ss`, in UTC. Nothing lists which 
 frames and the satellite's.
 
 - **LibreWXR** (`https://api.librewxr.net`): radar with an hour of forecast, and infrared satellite. The
-  public server is a best-effort service under CC BY 4.0, and LibreWXR can be run on a server of your own.
+  public server is a best-effort service under CC BY 4.0, and LibreWXR can be run on
+  [a server of your own](#a-radar-server-of-your-own).
 - **RainViewer** (`https://api.rainviewer.com`): past radar frames, without a forecast. Closer than zoom 7 it answers
   with a picture saying so instead of the radar, so set `max_zoom: 7`.
 
@@ -294,6 +295,76 @@ sources:
     visible_minutes: 1440
     history_minutes: 1440
 ```
+
+## A radar server of your own
+
+The public LibreWXR server is a best-effort service, and it blends the radar into weather models, so an hour ahead its
+forecast can be more model than radar. [LibreWXR](https://github.com/JoshuaKimsey/LibreWXR) can be run on a server of
+your own with Docker, and the card reads it like any other RainViewer API. These settings give one region's radar with
+an hour of forecast extrapolated from the radar alone, and nothing else.
+
+Clone LibreWXR's repository at its newest release, copy its `.env.example` to `.env` and change these in it:
+
+```ini
+LIBREWXR_IMAGE_TAG=1.0.0
+LIBREWXR_PORT=8097
+LIBREWXR_PUBLIC_URL=https://radar.example.com
+LIBREWXR_WORKERS=1
+LIBREWXR_ENABLED_REGIONS=OPERA
+LIBREWXR_NOWCAST_BLEND_MODE=radar
+LIBREWXR_ECMWF_ENABLED=false
+LIBREWXR_REGIONAL_NWP_ENABLED=false
+LIBREWXR_RRQPE_ENABLED=false
+LIBREWXR_SATELLITE_ENABLED=false
+LIBREWXR_ALERTS_ENABLED=false
+LIBREWXR_LIGHTNING_ENABLED=false
+LIBREWXR_STORM_CELLS_ENABLED=false
+LIBREWXR_MCP_ENABLED=false
+LIBREWXR_WEBSOCKET_ENABLED=false
+```
+
+- **`LIBREWXR_ENABLED_REGIONS`** is the radar composite to read. `OPERA` is EUMETNET's composite of Europe's radars,
+  and `.env.example` lists the others.
+- **`LIBREWXR_PUBLIC_URL`** is the address the card reaches the server at, as the server gives it in its catalogue.
+- **`LIBREWXR_NOWCAST_BLEND_MODE=radar`** makes the forecast from the radar alone, so the weather models can stay off.
+  With ECMWF's model on, the pipeline crashed with `Illegal instruction` on a CPU without AVX2.
+
+Start it with `docker compose up -d` in the repository's folder. It has its frames in about a minute, and
+`/public/weather-maps.json` lists 12 observed frames ten minutes apart and 6 forecast ones. The first forecast
+after a start only repeats the newest frame. With these settings the two containers took 1.3 to 1.7 GB of memory
+between them.
+
+LibreWXR writes its caches to disk, and with all of them there it wrote 14 GB in six hours. A
+`docker-compose.override.yml` beside its compose file can keep them in memory, which took about 320 MB:
+
+```yaml
+services:
+  pipeline:
+    volumes:
+      - /dev/shm/librewxr:/dev/shm/librewxr
+      - /dev/shm/librewxr-cache:/data/cache
+  renderer:
+    volumes:
+      - /dev/shm/librewxr:/dev/shm/librewxr
+      - /dev/shm/librewxr-cache:/data/cache
+```
+
+with `LIBREWXR_VOLATILE_CACHE_DIR=/dev/shm/librewxr` in `.env`.
+
+A dashboard opened over https reads the server only over https, so put it behind a reverse proxy with a certificate,
+which also lets the card read it away from home. The server allows any origin by default. Then the source is:
+
+```yaml
+- type: rainviewer
+  name: Forecast
+  icon: mdi:weather-cloudy-clock
+  url: https://radar.example.com
+  color_scheme: 8
+  attribution: Rain © EUMETNET OPERA
+```
+
+Without `color_scheme`, the card takes the first scheme the server lists, which on LibreWXR is black and white.
+OPERA's composites are under CC BY 4.0, so credit EUMETNET.
 
 ## Data
 
