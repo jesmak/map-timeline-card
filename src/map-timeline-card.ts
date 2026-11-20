@@ -848,6 +848,15 @@ export class MapTimelineCard extends LitElement {
                 flex: 1;
                 text-align: right;
             }
+            /* On a narrow card the window's times don't fit beside the time played, and its handles on the track show it. */
+            @container (max-width: 600px) {
+                .window {
+                    display: none;
+                }
+                .badge.back {
+                    margin-left: auto;
+                }
+            }
             .time {
                 white-space: nowrap;
                 font-variant-numeric: tabular-nums;

@@ -113,7 +113,10 @@ function parseSource(source: Record<string, unknown>, index: number): SourceOpti
     const type = parseChoice(source.type, SOURCE_TYPES, undefined, "type", where);
     // A geo_location source reads Home Assistant's own entities, and has neither an address nor a layer.
     const url = type === "geo_location" ? "" : text(source.url);
-    if (type !== "geo_location" && !/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
+    // A GeoJSON file may be Home Assistant's own, such as /local/points.geojson, which an address without its host
+    // finds from home and away alike.
+    const address = type === "geojson" ? /^(?:https?:\/\/|\/)\S+$/ : /^https?:\/\/\S+$/;
+    if (type !== "geo_location" && !address.test(url)) throw invalid("url", where);
     if (type === "xyz" && !validXyzUrl(url)) throw invalid("xyz_url", where);
     const layer =
         type === "rainviewer"

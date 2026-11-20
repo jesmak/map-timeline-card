@@ -1,0 +1,66 @@
+{
+    "version": "2.0",
+    "generated": 1791979200,
+    "host": "http://127.0.0.1:18123",
+    "radar": {
+        "past": [
+            {
+                "time": 1791975600,
+                "path": "/local/rain/v2/radar/1791975600"
+            },
+            {
+                "time": 1791976200,
+                "path": "/local/rain/v2/radar/1791976200"
+            },
+            {
+                "time": 1791976800,
+                "path": "/local/rain/v2/radar/1791976800"
+            },
+            {
+                "time": 1791977400,
+                "path": "/local/rain/v2/radar/1791977400"
+            },
+            {
+                "time": 1791978000,
+                "path": "/local/rain/v2/radar/1791978000"
+            },
+            {
+                "time": 1791978600,
+                "path": "/local/rain/v2/radar/1791978600"
+            },
+            {
+                "time": 1791979200,
+                "path": "/local/rain/v2/radar/1791979200"
+            }
+        ],
+        "nowcast": [
+            {
+                "time": 1791979800,
+                "path": "/local/rain/v2/radar/1791979800"
+            },
+            {
+                "time": 1791980400,
+                "path": "/local/rain/v2/radar/1791980400"
+            },
+            {
+                "time": 1791981000,
+                "path": "/local/rain/v2/radar/1791981000"
+            },
+            {
+                "time": 1791981600,
+                "path": "/local/rain/v2/radar/1791981600"
+            },
+            {
+                "time": 1791982200,
+                "path": "/local/rain/v2/radar/1791982200"
+            },
+            {
+                "time": 1791982800,
+                "path": "/local/rain/v2/radar/1791982800"
+            }
+        ]
+    },
+    "satellite": {
+        "infrared": []
+    }
+}

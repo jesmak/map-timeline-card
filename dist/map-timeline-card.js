@@ -1138,7 +1138,8 @@ function parseSource(source, index) {
   const where = { n: index + 1 };
   const type = parseChoice(source.type, SOURCE_TYPES, void 0, "type", where);
   const url = type === "geo_location" ? "" : text(source.url);
-  if (type !== "geo_location" && !/^https?:\/\/\S+$/.test(url)) throw invalid("url", where);
+  const address = type === "geojson" ? /^(?:https?:\/\/|\/)\S+$/ : /^https?:\/\/\S+$/;
+  if (type !== "geo_location" && !address.test(url)) throw invalid("url", where);
   if (type === "xyz" && !validXyzUrl(url)) throw invalid("xyz_url", where);
   const layer = type === "rainviewer" ? parseChoice(source.layer, RAINVIEWER_LAYERS, "radar", "rainviewer_layer", where) : type === "wms" || type === "wmts" ? text(source.layer) : "";
   if ((type === "wms" || type === "wmts") && !layer) throw invalid("layer", where);
@@ -34954,6 +34955,15 @@ MapTimelineCard.styles = [
             .window {
                 flex: 1;
                 text-align: right;
+            }
+            /* On a narrow card the window's times don't fit beside the time played, and its handles on the track show it. */
+            @container (max-width: 600px) {
+                .window {
+                    display: none;
+                }
+                .badge.back {
+                    margin-left: auto;
+                }
             }
             .time {
                 white-space: nowrap;
