@@ -34847,6 +34847,10 @@ MapTimelineCard.styles = [
                 background: var(--mtc-bar);
                 --mdc-icon-size: 18px;
             }
+            /* Without a line of text inside it, so the icon is centred whatever line height a frontend gives ha-icon. */
+            .round ha-icon {
+                display: flex;
+            }
             .legends {
                 position: absolute;
                 z-index: 3;
