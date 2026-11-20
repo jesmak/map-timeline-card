@@ -126,7 +126,7 @@
         "step_minutes_wms_helper": "Used when the server doesn't set its step size itself.",
         "step_minutes_wmts_helper": "Used when the server doesn't set its step size itself.",
         "step_minutes_xyz_helper": "How often the server's picture is updated.",
-        "step_minutes_geojson_helper": "How often the data is updated. Also the timeline's step when no picture layer is on.",
+        "step_minutes_geojson_helper": "How often the data is updated. With a time field, also the timeline's step when no picture layer is on.",
         "step_minutes_geo_location_helper": "The timeline's step when no picture layer is on.",
         "stale_steps": "Warn when no new picture has come in this many steps",
         "delay_minutes": "Delay",

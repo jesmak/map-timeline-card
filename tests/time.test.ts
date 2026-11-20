@@ -289,6 +289,12 @@ describe("sourcesTimeline", () => {
         expect(ahead.times.at(-1)).toBe(now + 4080);
     });
 
+    it("steps by the feature source when the image sources have no frames in their window", () => {
+        const timeline = sourcesTimeline([{ frames: [], step: 600 }], [{ history: 1800, step: 300, times: [] }], now)!;
+        expect(timeline.step).toBe(300);
+        expect(timeline.times.length).toBe(7);
+    });
+
     it("is none without a source", () => {
         expect(sourcesTimeline([], [], now)).toBeNull();
     });

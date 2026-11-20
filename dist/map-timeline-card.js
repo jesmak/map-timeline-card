@@ -877,7 +877,7 @@ var en_default = {
     step_minutes_wms_helper: "Used when the server doesn't set its step size itself.",
     step_minutes_wmts_helper: "Used when the server doesn't set its step size itself.",
     step_minutes_xyz_helper: "How often the server's picture is updated.",
-    step_minutes_geojson_helper: "How often the data is updated. Also the timeline's step when no picture layer is on.",
+    step_minutes_geojson_helper: "How often the data is updated. With a time field, also the timeline's step when no picture layer is on.",
     step_minutes_geo_location_helper: "The timeline's step when no picture layer is on.",
     stale_steps: "Warn when no new picture has come in this many steps",
     delay_minutes: "Delay",
@@ -1029,7 +1029,7 @@ var fi_default = {
     step_minutes_wms_helper: "T\xE4t\xE4 k\xE4ytet\xE4\xE4n, jos palvelin ei itse m\xE4\xE4rittele askelkokoa.",
     step_minutes_wmts_helper: "T\xE4t\xE4 k\xE4ytet\xE4\xE4n, jos palvelin ei itse m\xE4\xE4rittele askelkokoa.",
     step_minutes_xyz_helper: "Kuinka usein palvelimen kuva p\xE4ivittyy.",
-    step_minutes_geojson_helper: "Kuinka usein tiedot p\xE4ivitet\xE4\xE4n. My\xF6s aikajanan askel, kun yksik\xE4\xE4n kuvataso ei ole p\xE4\xE4ll\xE4.",
+    step_minutes_geojson_helper: "Kuinka usein tiedot p\xE4ivitet\xE4\xE4n. Aikakent\xE4n kanssa my\xF6s aikajanan askel, kun yksik\xE4\xE4n kuvataso ei ole p\xE4\xE4ll\xE4.",
     step_minutes_geo_location_helper: "Aikajanan askel, kun yksik\xE4\xE4n kuvataso ei ole p\xE4\xE4ll\xE4.",
     stale_steps: "Varoitus, kun uutta kuvaa ei ole tullut n\xE4in monen askelen aikana",
     delay_minutes: "Viive",
@@ -1396,9 +1396,10 @@ function featureSpan(now, history, times) {
   return [now - history, Math.max(now, ...times)];
 }
 function sourcesTimeline(images, features, now) {
+  const framed = images.some((source) => source.frames.length);
   const spans = features.map((source) => ({
     frames: featureSpan(now, source.history, source.times),
-    step: images.length ? Infinity : source.step
+    step: framed ? Infinity : source.step
   }));
   return buildTimeline([...images, ...spans]);
 }

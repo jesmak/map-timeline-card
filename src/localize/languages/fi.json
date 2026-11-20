@@ -126,7 +126,7 @@
         "step_minutes_wms_helper": "Tätä käytetään, jos palvelin ei itse määrittele askelkokoa.",
         "step_minutes_wmts_helper": "Tätä käytetään, jos palvelin ei itse määrittele askelkokoa.",
         "step_minutes_xyz_helper": "Kuinka usein palvelimen kuva päivittyy.",
-        "step_minutes_geojson_helper": "Kuinka usein tiedot päivitetään. Myös aikajanan askel, kun yksikään kuvataso ei ole päällä.",
+        "step_minutes_geojson_helper": "Kuinka usein tiedot päivitetään. Aikakentän kanssa myös aikajanan askel, kun yksikään kuvataso ei ole päällä.",
         "step_minutes_geo_location_helper": "Aikajanan askel, kun yksikään kuvataso ei ole päällä.",
         "stale_steps": "Varoitus, kun uutta kuvaa ei ole tullut näin monen askelen aikana",
         "delay_minutes": "Viive",

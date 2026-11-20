@@ -22,6 +22,12 @@ describe("advanced", () => {
         expect(advanced(images([300, 600]), images([600, 900]))).toBe(true);
         expect(advanced(images([300, 600]), images([300, 600]))).toBe(false);
     });
+
+    it("moves a feature source on only with its first read, as its chip shows no staleness", () => {
+        const features: LoadedSource = { kind: "features", data: { points: [], shapes: [] }, step: 300, legend: null, attribution: "" };
+        expect(advanced(null, features)).toBe(true);
+        expect(advanced(features, features)).toBe(false);
+    });
 });
 
 describe("readKey", () => {
@@ -36,6 +42,8 @@ describe("readKey", () => {
             { opacity: 0.5 },
             { color: "#ffc107" },
             { stale_steps: 9 },
+            { visible_minutes: 5 },
+            { timeline_marks: true },
         ]) {
             expect(readKey(sources(change))).toBe(plain);
         }

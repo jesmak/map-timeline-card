@@ -162,17 +162,18 @@ export function featureSpan(now: number, history: number, times: number[]): [num
 /**
  * The timeline over image sources' frames and timed feature sources' features. A feature source reaches from its history
  * to now, past an image source's newest frame, which lags behind now, so the newest features are played too, and on to
- * its newest feature when that is a forecast. Its step counts only without image sources, as features have no frames of
- * their own.
+ * its newest feature when that is a forecast. Its step counts only without image sources that have frames, as features
+ * have no frames of their own.
  */
 export function sourcesTimeline(
     images: { frames: number[]; step: number }[],
     features: { history: number; step: number; times: number[] }[],
     now: number,
 ): Timeline | null {
+    const framed = images.some((source) => source.frames.length);
     const spans = features.map((source) => ({
         frames: featureSpan(now, source.history, source.times),
-        step: images.length ? Infinity : source.step,
+        step: framed ? Infinity : source.step,
     }));
     return buildTimeline([...images, ...spans]);
 }
