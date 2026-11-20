@@ -33956,13 +33956,15 @@ var TimelineMap = class {
     this.wanted = [];
   }
   /**
-   * The shapes' source and layers, under the base map's first label. A shape's own simplestyle colours win, and one that
-   * names none, or names one MapLibre can't read, is drawn in its source's. Opacities and widths default as simplestyle's.
+   * The shapes' source and layers, under the base map's borders and labels, so both show through whatever covers the map.
+   * The frames go under the shapes. A base map without `boundary-` layers has them under its first label. A shape's own
+   * simplestyle colours win, and one that names none, or names one MapLibre can't read, is drawn in its source's.
+   * Opacities and widths default as simplestyle's.
    */
   addShapes() {
     const map = this.map;
     if (map.getSource(SHAPES)) return;
-    const label = map.getStyle().layers.find((layer) => layer.type === "symbol")?.id;
+    const label = map.getStyle().layers.find((layer) => layer.id.startsWith("boundary-") || layer.type === "symbol")?.id;
     map.addSource(SHAPES, { type: "geojson", data: this.shapes });
     map.addLayer(
       {
@@ -34013,7 +34015,7 @@ var TimelineMap = class {
       paint: { "icon-opacity": ["get", "opacity"] }
     });
   }
-  /** Adds a frame's layer hidden, under the base map's labels and in its source's place among the others. */
+  /** Adds a frame's layer hidden, under the base map's borders and labels and in its source's place among the others. */
   addFrame(frame) {
     const map = this.map;
     if (map.getLayer(frame.key)) return;
@@ -34039,7 +34041,7 @@ var TimelineMap = class {
       this.beforeId(frame.source)
     );
   }
-  /** The layer a source's frames go under: the lowest frame of a later source, or else the shapes, under the labels. */
+  /** The layer a source's frames go under: the lowest frame of a later source, or else the shapes. */
   beforeId(source) {
     const layers = this.map.getStyle().layers;
     const later = layers.find((layer) => {

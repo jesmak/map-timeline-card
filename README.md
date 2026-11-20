@@ -110,6 +110,10 @@ storm's strikes show where they were in time. Lines and areas from GeoJSON don't
 look half over, and are drawn in their own simplestyle colours (`fill`, `fill-opacity`, `stroke`, `stroke-width`,
 `stroke-opacity`) or in the source's colour.
 
+**The layers** are drawn in the order of `sources`, the first lowest, the lines and areas over the pictures and the
+points over everything. The base map's borders and place names stay on top of the layers, so the view can be told even
+under clouds or rain.
+
 **The card's size**: it takes a sections view's whole width unless set otherwise. On automatic rows it is as tall as
 `map_height`, rounded up to whole or half rows so the cards under it stay on the rows. Given rows in the layout tab,
 the map fills them, and the card is never lower than 260 pixels, which keeps the playing bar, the chips and some map in

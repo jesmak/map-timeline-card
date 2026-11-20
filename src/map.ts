@@ -45,7 +45,7 @@ export interface MapView {
 
 const FRAME_KEY = /^s\d+-\d+$/;
 
-/** Every source's lines and areas are one GeoJSON source, drawn above the frames and under the base map's labels. */
+/** Every source's lines and areas are one GeoJSON source, drawn above the frames and under the base map's borders and labels. */
 const SHAPES = "shapes";
 const SHAPE_FILL = "shapes-fill";
 const SHAPE_LINE = "shapes-line";
@@ -390,13 +390,15 @@ export class TimelineMap {
     }
 
     /**
-     * The shapes' source and layers, under the base map's first label. A shape's own simplestyle colours win, and one that
-     * names none, or names one MapLibre can't read, is drawn in its source's. Opacities and widths default as simplestyle's.
+     * The shapes' source and layers, under the base map's borders and labels, so both show through whatever covers the map.
+     * The frames go under the shapes. A base map without `boundary-` layers has them under its first label. A shape's own
+     * simplestyle colours win, and one that names none, or names one MapLibre can't read, is drawn in its source's.
+     * Opacities and widths default as simplestyle's.
      */
     private addShapes(): void {
         const map = this.map!;
         if (map.getSource(SHAPES)) return;
-        const label = map.getStyle().layers.find((layer) => layer.type === "symbol")?.id;
+        const label = map.getStyle().layers.find((layer) => layer.id.startsWith("boundary-") || layer.type === "symbol")?.id;
         map.addSource(SHAPES, { type: "geojson", data: this.shapes });
         map.addLayer(
             {
@@ -449,7 +451,7 @@ export class TimelineMap {
         });
     }
 
-    /** Adds a frame's layer hidden, under the base map's labels and in its source's place among the others. */
+    /** Adds a frame's layer hidden, under the base map's borders and labels and in its source's place among the others. */
     private addFrame(frame: DrawnFrame): void {
         const map = this.map!;
         if (map.getLayer(frame.key)) return;
@@ -476,7 +478,7 @@ export class TimelineMap {
         );
     }
 
-    /** The layer a source's frames go under: the lowest frame of a later source, or else the shapes, under the labels. */
+    /** The layer a source's frames go under: the lowest frame of a later source, or else the shapes. */
     private beforeId(source: number): string | undefined {
         const layers = this.map!.getStyle().layers;
         const later = layers.find((layer) => {
