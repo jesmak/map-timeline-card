@@ -1312,6 +1312,9 @@ function parseTime(text3) {
 function isoTime(time) {
   return new Date(time * 1e3).toISOString().replace(".000Z", "Z");
 }
+function clock(time, language, timeZone) {
+  return new Intl.DateTimeFormat(language, { hour: "2-digit", minute: "2-digit", timeZone }).format(time * 1e3);
+}
 function parseTimeDimension(text3) {
   const extent = { times: [], ranges: [] };
   for (const part of text3.split(",")) {
@@ -34764,7 +34767,8 @@ var MapTimelineCard = class extends i4 {
   }
   clock(seconds) {
     const language = this.hass?.locale?.language ?? this.hass?.language ?? browserLanguage();
-    return new Intl.DateTimeFormat(language, { hour: "2-digit", minute: "2-digit" }).format(seconds * 1e3);
+    const timeZone = this.hass?.locale?.time_zone === "server" ? this.hass.config?.time_zone : void 0;
+    return clock(seconds, language, timeZone);
   }
   age(seconds) {
     const minutes2 = Math.max(0, Math.round(seconds / 60));
@@ -34827,18 +34831,19 @@ MapTimelineCard.styles = [
                 color: inherit;
                 cursor: pointer;
             }
+            /* Centred under MapLibre's compact attribution button, 24 px wide with a 10 px margin. */
             .corner {
                 position: absolute;
                 z-index: 2;
                 top: 44px;
-                right: 10px;
+                right: 8px;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
             }
             .round {
-                width: 29px;
-                height: 29px;
+                width: 28px;
+                height: 28px;
                 padding: 0;
                 border: none;
                 border-radius: 50%;

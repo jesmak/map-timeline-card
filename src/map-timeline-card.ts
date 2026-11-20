@@ -20,7 +20,7 @@ import { readThemeColors } from "./map-theme";
 import { isFeatureSource, parseOptions, type CardOptions, type SourceOptions } from "./options";
 import { fillLimit, filledHeight, filledStyle, validRowStep, type RowStepConfig } from "./rows";
 import { loadSource, type LoadedSource } from "./sources";
-import { buildTimeline, defaultWindow, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
+import { buildTimeline, clock, defaultWindow, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
 
 /** Replaced at build time with the version in package.json. */
 declare const __CARD_VERSION__: string;
@@ -654,7 +654,8 @@ export class MapTimelineCard extends LitElement {
 
     private clock(seconds: number): string {
         const language = this.hass?.locale?.language ?? this.hass?.language ?? browserLanguage();
-        return new Intl.DateTimeFormat(language, { hour: "2-digit", minute: "2-digit" }).format(seconds * 1000);
+        const timeZone = this.hass?.locale?.time_zone === "server" ? this.hass.config?.time_zone : undefined;
+        return clock(seconds, language, timeZone);
     }
 
     private age(seconds: number): string {
@@ -719,18 +720,19 @@ export class MapTimelineCard extends LitElement {
                 color: inherit;
                 cursor: pointer;
             }
+            /* Centred under MapLibre's compact attribution button, 24 px wide with a 10 px margin. */
             .corner {
                 position: absolute;
                 z-index: 2;
                 top: 44px;
-                right: 10px;
+                right: 8px;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
             }
             .round {
-                width: 29px;
-                height: 29px;
+                width: 28px;
+                height: 28px;
                 padding: 0;
                 border: none;
                 border-radius: 50%;

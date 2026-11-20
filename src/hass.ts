@@ -21,7 +21,8 @@ export interface HomeAssistant {
     themes?: { darkMode?: boolean; theme?: string };
     selectedTheme?: { theme?: string } | null;
     /** Where home is, which the map centres on unless a zone is set. */
-    config?: { latitude?: number; longitude?: number };
+    config?: { latitude?: number; longitude?: number; time_zone?: string };
     language?: string;
-    locale?: { language?: string };
+    /** `time_zone` is the user's choice between the browser's zone and the server's. */
+    locale?: { language?: string; time_zone?: "local" | "server" };
 }

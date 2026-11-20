@@ -40,6 +40,11 @@ export function isoTime(time: number): string {
     return new Date(time * 1000).toISOString().replace(".000Z", "Z");
 }
 
+/** A time of day as the clock shows it, in `timeZone` or the browser's own zone. */
+export function clock(time: number, language: string, timeZone?: string): string {
+    return new Intl.DateTimeFormat(language, { hour: "2-digit", minute: "2-digit", timeZone }).format(time * 1000);
+}
+
 /**
  * A WMS time dimension's value: times and `start/end/period` ranges separated by commas, as WMS 1.3.0's annex C
  * describes. Throws on anything else, so a source that can't be read says so instead of showing nothing.

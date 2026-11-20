@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     buildTimeline,
+    clock,
     defaultWindow,
     frameAt,
     frameFor,
@@ -238,5 +239,14 @@ describe("defaultWindow", () => {
     it("keeps two frames when all of them are older than an hour", () => {
         const timeline = buildTimeline([{ frames: [0, 300, 600], step: 300 }])!;
         expect(defaultWindow(timeline, 99999)).toEqual([1, 2]);
+    });
+});
+
+describe("clock", () => {
+    const noonUtc = at("2026-10-14T12:00:00Z");
+
+    it("shows the time in the zone it is given", () => {
+        expect(clock(noonUtc, "fi", "Europe/Helsinki")).toBe("15.00");
+        expect(clock(noonUtc, "en-GB", "Asia/Tokyo")).toBe("21:00");
     });
 });
