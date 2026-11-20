@@ -45,6 +45,7 @@ export function eventOpacity(event: { time: number | null }, at: number, visible
     if (!timed) return 1;
     if (event.time === null) return live ? 1 : 0;
     const age = at - event.time;
-    if (age < 0 || age > visibleFor) return 0;
+    // Until its time plus visibleFor, not at it, so features a step of visibleFor apart are shown one at a time.
+    if (age < 0 || age >= visibleFor) return 0;
     return 1 - (1 - FADED_OPACITY) * (visibleFor ? age / visibleFor : 0);
 }

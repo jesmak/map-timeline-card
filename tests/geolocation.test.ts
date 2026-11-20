@@ -45,12 +45,12 @@ describe("eventOpacity", () => {
     it("is full at the event's time and fades linearly to the faded strength at the end of its visibility", () => {
         expect(eventOpacity(event, 1000, 1800, false)).toBe(1);
         expect(eventOpacity(event, 1900, 1800, false)).toBeCloseTo(1 - (1 - FADED_OPACITY) / 2);
-        expect(eventOpacity(event, 2800, 1800, false)).toBeCloseTo(FADED_OPACITY);
+        expect(eventOpacity(event, 2799, 1800, false)).toBeCloseTo(FADED_OPACITY, 2);
     });
 
-    it("is hidden before its time and after its visibility", () => {
+    it("is hidden before its time and from the end of its visibility, so features that far apart show one at a time", () => {
         expect(eventOpacity(event, 999, 1800, false)).toBe(0);
-        expect(eventOpacity(event, 2801, 1800, false)).toBe(0);
+        expect(eventOpacity(event, 2800, 1800, false)).toBe(0);
     });
 
     it("shows an event without a time only live", () => {

@@ -4,6 +4,7 @@ import {
     buildTimeline,
     clock,
     defaultWindow,
+    featureSpan,
     frameAt,
     frameFor,
     framesBetween,
@@ -248,5 +249,18 @@ describe("clock", () => {
     it("shows the time in the zone it is given", () => {
         expect(clock(noonUtc, "fi", "Europe/Helsinki")).toBe("15.00");
         expect(clock(noonUtc, "en-GB", "Asia/Tokyo")).toBe("21:00");
+    });
+});
+
+describe("featureSpan", () => {
+    const now = at("2026-11-20T14:00:00Z");
+
+    it("reaches from the history to now when every feature is in the past", () => {
+        expect(featureSpan(now, 7200, [now - 600, now - 60])).toEqual([now - 7200, now]);
+        expect(featureSpan(now, 7200, [])).toEqual([now - 7200, now]);
+    });
+
+    it("reaches on to the newest feature when it is a forecast", () => {
+        expect(featureSpan(now, 7200, [now - 600, now + 4080])).toEqual([now - 7200, now + 4080]);
     });
 });

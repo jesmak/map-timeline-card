@@ -407,6 +407,8 @@ export class TimelineMap {
                 paint: {
                     "fill-color": ["to-color", ["get", "fill"], ["get", "_color"]],
                     "fill-opacity": ["number", ["get", "fill-opacity"], 0.6],
+                    // Antialiased, the shared edges of shapes side by side, such as a grid's cells, show as light seams.
+                    "fill-antialias": false,
                 },
             },
             label,

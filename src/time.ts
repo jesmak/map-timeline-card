@@ -154,6 +154,11 @@ export function buildTimeline(sources: { frames: number[]; step: number }[]): Ti
     return { times, step };
 }
 
+/** A feature source's reach on the timeline: from its history to now, or to its newest feature when that is ahead of now. */
+export function featureSpan(now: number, history: number, times: number[]): [number, number] {
+    return [now - history, Math.max(now, ...times)];
+}
+
 /** The window played by default: the last hour up to now and everything ahead, as indexes into the timeline. */
 export function defaultWindow(timeline: Timeline, now: number): [number, number] {
     const last = timeline.times.length - 1;

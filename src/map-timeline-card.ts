@@ -20,7 +20,7 @@ import { readThemeColors } from "./map-theme";
 import { isFeatureSource, parseOptions, type CardOptions, type SourceOptions } from "./options";
 import { fillLimit, filledHeight, filledStyle, validRowStep, type RowStepConfig } from "./rows";
 import { loadSource, type LoadedSource } from "./sources";
-import { buildTimeline, clock, defaultWindow, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
+import { buildTimeline, clock, defaultWindow, featureSpan, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
 
 /** Replaced at build time with the version in package.json. */
 declare const __CARD_VERSION__: string;
@@ -369,12 +369,17 @@ export class MapTimelineCard extends LitElement {
     private timeline(): Timeline | null {
         const images = this.sources.flatMap((source, i) => (this.enabled[i] && source.loaded?.kind === "images" ? [source.loaded] : []));
         // A feature source with times reaches from its history to now, past an image source's newest frame, which lags
-        // behind now, so the newest features are played too. Its step counts only without image sources, as features have
-        // no frames of their own.
+        // behind now, so the newest features are played too, and on to its newest feature when that is a forecast. Its step
+        // counts only without image sources, as features have no frames of their own.
         const now = Date.now() / 1000;
         const points = this.options!.sources.flatMap((source, i) =>
             this.enabled[i] && timed(source)
-                ? [{ frames: [now - source.historyMinutes * 60, now], step: images.length ? Infinity : source.stepMinutes * 60 }]
+                ? [
+                      {
+                          frames: featureSpan(now, source.historyMinutes * 60, this.featureTimes(i)),
+                          step: images.length ? Infinity : source.stepMinutes * 60,
+                      },
+                  ]
                 : [],
         );
         return buildTimeline([...images, ...points]);

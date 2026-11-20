@@ -1387,6 +1387,9 @@ function buildTimeline(sources) {
   if (times[times.length - 1] < last) times.push(last);
   return { times, step: step2 };
 }
+function featureSpan(now, history, times) {
+  return [now - history, Math.max(now, ...times)];
+}
 function defaultWindow(timeline, now) {
   const last = timeline.times.length - 1;
   const start = timeline.times.findIndex((time) => time >= now - 3600);
@@ -1993,7 +1996,7 @@ function eventOpacity(event, at3, visibleFor, live, timed2 = true) {
   if (!timed2) return 1;
   if (event.time === null) return live ? 1 : 0;
   const age = at3 - event.time;
-  if (age < 0 || age > visibleFor) return 0;
+  if (age < 0 || age >= visibleFor) return 0;
   return 1 - (1 - FADED_OPACITY) * (visibleFor ? age / visibleFor : 0);
 }
 
@@ -33950,7 +33953,9 @@ var TimelineMap = class {
         filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
         paint: {
           "fill-color": ["to-color", ["get", "fill"], ["get", "_color"]],
-          "fill-opacity": ["number", ["get", "fill-opacity"], 0.6]
+          "fill-opacity": ["number", ["get", "fill-opacity"], 0.6],
+          // Antialiased, the shared edges of shapes side by side, such as a grid's cells, show as light seams.
+          "fill-antialias": false
         }
       },
       label
@@ -34564,7 +34569,12 @@ var MapTimelineCard = class extends i4 {
     const images = this.sources.flatMap((source, i7) => this.enabled[i7] && source.loaded?.kind === "images" ? [source.loaded] : []);
     const now = Date.now() / 1e3;
     const points = this.options.sources.flatMap(
-      (source, i7) => this.enabled[i7] && timed(source) ? [{ frames: [now - source.historyMinutes * 60, now], step: images.length ? Infinity : source.stepMinutes * 60 }] : []
+      (source, i7) => this.enabled[i7] && timed(source) ? [
+        {
+          frames: featureSpan(now, source.historyMinutes * 60, this.featureTimes(i7)),
+          step: images.length ? Infinity : source.stepMinutes * 60
+        }
+      ] : []
     );
     return buildTimeline([...images, ...points]);
   }
