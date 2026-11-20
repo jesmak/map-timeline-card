@@ -159,6 +159,33 @@ export function featureSpan(now: number, history: number, times: number[]): [num
     return [now - history, Math.max(now, ...times)];
 }
 
+/**
+ * The timeline over image sources' frames and timed feature sources' features. A feature source reaches from its history
+ * to now, past an image source's newest frame, which lags behind now, so the newest features are played too, and on to
+ * its newest feature when that is a forecast. Its step counts only without image sources, as features have no frames of
+ * their own.
+ */
+export function sourcesTimeline(
+    images: { frames: number[]; step: number }[],
+    features: { history: number; step: number; times: number[] }[],
+    now: number,
+): Timeline | null {
+    const spans = features.map((source) => ({
+        frames: featureSpan(now, source.history, source.times),
+        step: images.length ? Infinity : source.step,
+    }));
+    return buildTimeline([...images, ...spans]);
+}
+
+/**
+ * Whether a source's chip warns: its newest frame unchanged for `staleSteps` of its steps since the card last saw it
+ * change. The card counts its first read as a change, so a source already stuck when the card opens warns only after
+ * those steps.
+ */
+export function isStale(advancedAt: number, now: number, staleSteps: number, step: number): boolean {
+    return now - advancedAt > staleSteps * step;
+}
+
 /** The window played by default: the last hour up to now and everything ahead, as indexes into the timeline. */
 export function defaultWindow(timeline: Timeline, now: number): [number, number] {
     const last = timeline.times.length - 1;

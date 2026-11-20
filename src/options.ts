@@ -20,6 +20,8 @@ export const RAINVIEWER_LAYERS = ["radar", "satellite"] as const;
 
 /** Seven grid rows of a sections view, so the card ends on the rows unless told otherwise. */
 export const DEFAULT_MAP_HEIGHT = 440;
+/** The lowest the card is drawn, which keeps the playing bar, the chips and some map in view. */
+export const MIN_MAP_HEIGHT = 260;
 export const DEFAULT_ZOOM = 8;
 export const DEFAULT_REGION_ZOOM = 5;
 export const MAX_ZOOM = 18;
@@ -88,10 +90,13 @@ export interface CardOptions {
     sources: SourceOptions[];
 }
 
-/** An error for a value that can't be used, in the browser's language: the card has no `hass` yet when it is configured. */
-export function invalid(key: string, values: Record<string, string | number> = {}): Error {
+/**
+ * An error for a value that can't be used, in the browser's language: the card has no `hass` yet when it is configured.
+ * A name in braces with no value is left as it is, as the XYZ address's own `{z}`, `{x}` and `{y}` are in its text.
+ */
+function invalid(key: string, values: Record<string, string | number> = {}): Error {
     const text = translate(browserLanguage(), `config.invalid_${key}`);
-    return new Error(text.replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? "")));
+    return new Error(text.replace(/\{(\w+)\}/g, (match, name: string) => (name in values ? String(values[name]) : match)));
 }
 
 export function parseOptions(raw: unknown): CardOptions {
@@ -102,7 +107,7 @@ export function parseOptions(raw: unknown): CardOptions {
         zoom: parseZoom(config.zoom, DEFAULT_ZOOM, "zoom"),
         regionZoom: parseZoom(config.region_zoom, DEFAULT_REGION_ZOOM, "region_zoom"),
         mapStyle: parseChoice(config.map_style, MAP_STYLES, "default", "map_style"),
-        mapHeight: parseNumber(config.map_height, DEFAULT_MAP_HEIGHT, (value) => value >= 200, "map_height"),
+        mapHeight: parseNumber(config.map_height, DEFAULT_MAP_HEIGHT, (value) => value >= MIN_MAP_HEIGHT, "map_height"),
         speed: parseNumber(config.speed, DEFAULT_SPEED, (value) => value > 0, "speed"),
         sources: config.sources.map((entry, index) => parseSource(isRecord(entry) ? entry : {}, index)),
     };

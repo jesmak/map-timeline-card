@@ -17,10 +17,10 @@ import { browserLanguage, translate } from "./localize/localize";
 import { frameKey, TimelineMap, type DrawnFrame, type DrawnPoint, type DrawnShape, type MapView } from "./map";
 import { ensureToken, MapError } from "./map-tiles";
 import { readThemeColors } from "./map-theme";
-import { isFeatureSource, parseOptions, type CardOptions, type SourceOptions } from "./options";
+import { isFeatureSource, MIN_MAP_HEIGHT, parseOptions, type CardOptions, type SourceOptions } from "./options";
 import { fillLimit, filledHeight, filledStyle, validRowStep, type RowStepConfig } from "./rows";
-import { loadSource, type LoadedSource } from "./sources";
-import { buildTimeline, clock, defaultWindow, featureSpan, frameAt, frameFor, MIN_STEP, type Timeline } from "./time";
+import { advanced, loadSource, readKey, type LoadedSource } from "./sources";
+import { clock, defaultWindow, frameAt, frameFor, isStale, MIN_STEP, sourcesTimeline, type Timeline } from "./time";
 
 /** Replaced at build time with the version in package.json. */
 declare const __CARD_VERSION__: string;
@@ -29,11 +29,6 @@ declare const __CARD_VERSION__: string;
 const DEFAULT_PRIMARY = "#03a9f4";
 /** The card's border, above and below. */
 const BORDER_PX = 2;
-/**
- * The least height that still shows the bar while playing, the chips, and some map above them. The bar is drawn over
- * the map, so the map is never shorter than this.
- */
-const MIN_HEIGHT_PX = 260;
 /** How often the ages on the chips are redrawn between the sources' own updates. */
 const TICK_MS = 30_000;
 /** A source that couldn't be read is asked again after this long, whatever its step. */
@@ -113,8 +108,9 @@ export class MapTimelineCard extends LitElement {
         this.config = { grid_options, layout_options, row_step };
         const previous = this.options;
         this.options = options;
-        // New sources are read again from the start; a change that leaves them as they were keeps what was read.
-        const key = JSON.stringify(options.sources);
+        // Sources read differently are read again from the start. A change to how they are only drawn (a name, an icon, a
+        // colour, an opacity) keeps what was read, so typing a name in the editor doesn't reload every source.
+        const key = readKey(options.sources);
         if (key !== this.sourcesKey) {
             this.sourcesKey = key;
             this.stopSources();
@@ -137,7 +133,7 @@ export class MapTimelineCard extends LitElement {
     }
 
     public getGridOptions(): Record<string, unknown> {
-        return { columns: "full", min_columns: 6, rows: "auto", min_rows: gridMinRows(MIN_HEIGHT_PX) };
+        return { columns: "full", min_columns: 6, rows: "auto", min_rows: gridMinRows(MIN_MAP_HEIGHT) };
     }
 
     public connectedCallback(): void {
@@ -167,8 +163,10 @@ export class MapTimelineCard extends LitElement {
         const legends = this.options.sources
             .map((source, i) => ({ name: source.name, legend: this.enabled[i] ? this.sources[i]?.loaded?.legend : null }))
             .filter((entry) => entry.legend);
-        const fill = fillLimit(this.config, this.layout, MIN_HEIGHT_PX) ? filledHeight(this.options.mapHeight + BORDER_PX, this.config) : 0;
-        const held = filledStyle(this.config, this.layout, MIN_HEIGHT_PX, fill);
+        const fill = fillLimit(this.config, this.layout, MIN_MAP_HEIGHT)
+            ? filledHeight(this.options.mapHeight + BORDER_PX, this.config)
+            : 0;
+        const held = filledStyle(this.config, this.layout, MIN_MAP_HEIGHT, fill);
         return html`
             <ha-card style="--map-height:${this.options.mapHeight}px;${held}">
                 <div class="map"></div>
@@ -310,10 +308,9 @@ export class MapTimelineCard extends LitElement {
                             note = this.text("chip.only_ahead");
                         } else {
                             note = this.age(now - newest);
-                            const quiet = Date.now() - state.advancedAt;
-                            if (quiet > source.staleSteps * loaded.step * 1000) {
+                            if (isStale(state.advancedAt / 1000, now, source.staleSteps, loaded.step)) {
                                 warn = true;
-                                title = this.text("chip.stale", { age: this.age(quiet / 1000) });
+                                title = this.text("chip.stale", { age: this.age(now - state.advancedAt / 1000) });
                             }
                         }
                     }
@@ -368,21 +365,12 @@ export class MapTimelineCard extends LitElement {
     /** The timeline over the sources that are on and have been read. */
     private timeline(): Timeline | null {
         const images = this.sources.flatMap((source, i) => (this.enabled[i] && source.loaded?.kind === "images" ? [source.loaded] : []));
-        // A feature source with times reaches from its history to now, past an image source's newest frame, which lags
-        // behind now, so the newest features are played too, and on to its newest feature when that is a forecast. Its step
-        // counts only without image sources, as features have no frames of their own.
-        const now = Date.now() / 1000;
-        const points = this.options!.sources.flatMap((source, i) =>
+        const features = this.options!.sources.flatMap((source, i) =>
             this.enabled[i] && timed(source)
-                ? [
-                      {
-                          frames: featureSpan(now, source.historyMinutes * 60, this.featureTimes(i)),
-                          step: images.length ? Infinity : source.stepMinutes * 60,
-                      },
-                  ]
+                ? [{ history: source.historyMinutes * 60, step: source.stepMinutes * 60, times: this.featureTimes(i) }]
                 : [],
         );
-        return buildTimeline([...images, ...points]);
+        return sourcesTimeline(images, features, Date.now() / 1000);
     }
 
     /** Puts on the map what the card shows now: each source's newest frame live, or its frame at the time played. */
@@ -551,12 +539,9 @@ export class MapTimelineCard extends LitElement {
             const loaded = await loadSource(options, Date.now() / 1000);
             if (key !== this.sourcesKey) return;
             const step = this.timeline()?.step;
-            const before = this.sources[i];
-            const newest = (source: LoadedSource | null) =>
-                source?.kind === "images" ? source.frames[source.frames.length - 1] : undefined;
-            const advanced = !before.loaded || newest(before.loaded) !== newest(loaded);
+            const moved = advanced(this.sources[i].loaded, loaded);
             this.sources = this.sources.map((source, j) =>
-                j === i ? { ...source, loaded, error: "", advancedAt: advanced ? Date.now() : source.advancedAt } : source,
+                j === i ? { ...source, loaded, error: "", advancedAt: moved ? Date.now() : source.advancedAt } : source,
             );
             this.updatedAt = Date.now();
             next = Math.max(MIN_STEP, loaded.step);

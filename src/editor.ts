@@ -20,6 +20,7 @@ import {
     DEFAULT_ZOOM,
     MAP_STYLES,
     MAX_ZOOM,
+    MIN_MAP_HEIGHT,
     RAINVIEWER_LAYERS,
     SOURCE_TYPES,
     type SourceType,
@@ -58,7 +59,7 @@ const SOURCE_FIELDS: Record<SourceType, { main: string[]; advanced: string[] }> 
     },
     wmts: {
         main: ["url", "layer", "style"],
-        advanced: ["history_minutes", "opacity", "max_zoom", "stale_steps", "show_legend", "legend", "attribution"],
+        advanced: ["history_minutes", "opacity", "max_zoom", "step_minutes", "stale_steps", "show_legend", "legend", "attribution"],
     },
     xyz: { main: ["url", "step_minutes", "delay_minutes"], advanced: ["history_minutes", "opacity", "max_zoom", "legend", "attribution"] },
     rainviewer: {
@@ -71,7 +72,7 @@ const SOURCE_FIELDS: Record<SourceType, { main: string[]; advanced: string[] }> 
     },
     geo_location: {
         main: ["source", "visible_minutes", "timeline_marks", "color"],
-        advanced: ["history_minutes", "time_attribute", "attribution"],
+        advanced: ["history_minutes", "step_minutes", "time_attribute", "attribution"],
     },
 };
 
@@ -263,7 +264,10 @@ export class MapTimelineCardEditor extends LitElement {
                 schema: [
                     { name: "zoom", selector: { number: { min: 0, max: MAX_ZOOM, step: 0.5, mode: "box" } } },
                     { name: "region_zoom", selector: { number: { min: 0, max: MAX_ZOOM, step: 0.5, mode: "box" } } },
-                    { name: "map_height", selector: { number: { min: 200, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } } },
+                    {
+                        name: "map_height",
+                        selector: { number: { min: MIN_MAP_HEIGHT, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } },
+                    },
                     { name: "speed", selector: { number: { min: 1, max: 120, step: 1, mode: "box", unit_of_measurement: "min/s" } } },
                 ],
             },

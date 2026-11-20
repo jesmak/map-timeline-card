@@ -10,7 +10,7 @@ import { capabilitiesUrl, readCapabilities, tileUrl } from "./wms";
 import { readWmtsCapabilities } from "./wmts";
 import { xyzFrames, xyzUrl } from "./xyz";
 
-export interface LoadedImages {
+interface LoadedImages {
     kind: "images";
     /** Oldest first, in seconds. */
     frames: number[];
@@ -24,7 +24,7 @@ export interface LoadedImages {
     maxZoom: number | null;
 }
 
-export interface LoadedFeatures {
+interface LoadedFeatures {
     kind: "features";
     data: GeoJsonData;
     /** How often it is read again, in seconds. */
@@ -34,6 +34,38 @@ export interface LoadedFeatures {
 }
 
 export type LoadedSource = LoadedImages | LoadedFeatures;
+
+/**
+ * Whether a read moved an image source on: its first read, or a newest frame other than the one before. A feature
+ * source moves on only with its first read, as its chip has no staleness to show.
+ */
+export function advanced(before: LoadedSource | null, loaded: LoadedSource): boolean {
+    const newest = (source: LoadedSource | null) => (source?.kind === "images" ? source.frames[source.frames.length - 1] : undefined);
+    return !before || newest(before) !== newest(loaded);
+}
+
+/**
+ * What decides how the sources are read and their frames added to the map, in their order. Sources whose keys match
+ * keep what was read, as everything else is taken from the options each time they are drawn.
+ */
+export function readKey(sources: SourceOptions[]): string {
+    return JSON.stringify(
+        sources.map((s) => [
+            s.type,
+            s.url,
+            s.layer,
+            s.style,
+            s.colorScheme,
+            s.maxZoom,
+            s.historyMinutes,
+            s.stepMinutes,
+            s.delayMinutes,
+            s.timeProperty,
+            s.legend,
+            s.attribution,
+        ]),
+    );
+}
 
 export async function loadSource(options: SourceOptions, now: number): Promise<LoadedSource> {
     switch (options.type) {

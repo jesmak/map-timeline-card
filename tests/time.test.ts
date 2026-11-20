@@ -8,9 +8,11 @@ import {
     frameAt,
     frameFor,
     framesBetween,
+    isStale,
     parseDuration,
     parseTime,
     parseTimeDimension,
+    sourcesTimeline,
     stepOf,
 } from "../src/time";
 
@@ -188,7 +190,7 @@ describe("frameFor", () => {
         expect(frameFor(withForecast, 450, 300)).toBe(400);
     });
 
-    it("keeps a forecast-only source's first frame for the time between now and it", () => {
+    it("shows nothing of a forecast-only source before its first frame, then that frame", () => {
         expect(frameFor([400, 500], 350, 300)).toBeNull();
         expect(frameFor([400, 500], 420, 300)).toBe(400);
     });
@@ -262,5 +264,44 @@ describe("featureSpan", () => {
 
     it("reaches on to the newest feature when it is a forecast", () => {
         expect(featureSpan(now, 7200, [now - 600, now + 4080])).toEqual([now - 7200, now + 4080]);
+    });
+});
+
+describe("sourcesTimeline", () => {
+    const now = at("2026-11-20T14:00:00Z");
+    const clouds = { frames: [now - 1800, now - 1200, now - 600], step: 600 };
+
+    it("steps by a feature source's step when no image source is on", () => {
+        const timeline = sourcesTimeline([], [{ history: 1800, step: 300, times: [now - 60] }], now)!;
+        expect(timeline.step).toBe(300);
+        expect(timeline.times[0]).toBe(now - 1800);
+        expect(timeline.times.at(-1)).toBe(now);
+    });
+
+    it("steps by the image sources alone when there are any, as features have no frames of their own", () => {
+        const timeline = sourcesTimeline([clouds], [{ history: 1800, step: 60, times: [] }], now)!;
+        expect(timeline.step).toBe(600);
+    });
+
+    it("reaches past the images' newest frame to now, and on to a feature forecast", () => {
+        expect(sourcesTimeline([clouds], [{ history: 1800, step: 300, times: [] }], now)!.times.at(-1)).toBe(now);
+        const ahead = sourcesTimeline([clouds], [{ history: 1800, step: 300, times: [now + 4080] }], now)!;
+        expect(ahead.times.at(-1)).toBe(now + 4080);
+    });
+
+    it("is none without a source", () => {
+        expect(sourcesTimeline([], [], now)).toBeNull();
+    });
+});
+
+describe("isStale", () => {
+    it("warns only after the source's steps without a new frame", () => {
+        expect(isStale(1000, 1000 + 3 * 300, 3, 300)).toBe(false);
+        expect(isStale(1000, 1000 + 3 * 300 + 1, 3, 300)).toBe(true);
+    });
+
+    it("counts each source's own step", () => {
+        expect(isStale(1000, 1000 + 1200, 3, 300)).toBe(true);
+        expect(isStale(1000, 1000 + 1200, 3, 600)).toBe(false);
     });
 });

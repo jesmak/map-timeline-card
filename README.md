@@ -59,39 +59,40 @@ its type. For a WMS or WMTS source, the editor reads the server's layers and sty
 | `zoom`        | number | The map's zoom near home, from 0 to 18                                                              | `8`        |
 | `region_zoom` | number | The map's zoom for the whole region, which the card's map button switches to                        | `5`        |
 | `map_style`   | string | `default`, `colorful`, `natural`, `muted`, `gray` or `toner`, as Home Assistant's map card has them | `default`  |
-| `map_height`  | number | The map's height in pixels, at least 200                                                            | `440`      |
+| `map_height`  | number | The map's height in pixels, at least 260                                                            | `440`      |
 | `speed`       | number | How many minutes of the sources' time are played in a second                                        | `10`       |
 | `row_step`    | string | On automatic rows in a sections view, whether the card's height rounds up to `full` or `half` rows  | `full`     |
 
 ### Sources
 
-| Name              | Type           | Description                                                                                                                                  | Default                       |
-| ----------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `type`            | string         | `wms`, `wmts`, `xyz`, `rainviewer`, `geojson` or `geo_location`                                                                              | `required`                    |
-| `url`             | string         | The source's address, as its type describes below. Not for `geo_location`                                                                    | `required`                    |
-| `layer`           | string         | A WMS or WMTS layer's name, required for them. For `rainviewer`, `radar` or `satellite`                                                      | `radar` for `rainviewer`      |
-| `name`            | string         | The name on the source's chip below the map                                                                                                  | its layer or its type         |
-| `icon`            | string         | An icon for its chip, and for its points on the map. Points without one are dots                                                             |                               |
-| `style`           | string         | A WMS or WMTS style the server offers                                                                                                        | the server's first or default |
-| `color_scheme`    | number         | A RainViewer API's colour scheme, by its number                                                                                              | the server's first            |
-| `history_minutes` | number         | How far back the source goes                                                                                                                 | `120`                         |
-| `opacity`         | number         | How opaque its frames are, above 0 and up to 1                                                                                               | `1`                           |
-| `max_zoom`        | number         | The closest zoom the server has pictures for. Closer than this, the card enlarges them. A WMTS server says this itself                       |                               |
-| `step_minutes`    | number         | An XYZ source's step, a GeoJSON source's interval between reads, and a WMS or WMTS source's step when its server gives its times without one | `5`                           |
-| `delay_minutes`   | number         | How far behind now an XYZ source's newest picture is                                                                                         | `0`                           |
-| `stale_steps`     | number         | How many of its steps a source may go without a new frame before its chip warns                                                              | `3`                           |
-| `legend`          | string or bool | A legend image of your own, or `false` for none. A WMS or WMTS source shows its server's legend unless set                                   |                               |
-| `attribution`     | string         | Credits of your own, shown behind the map's info button. A WMS or WMTS source shows what its server gives unless set                         |                               |
-| `time_property`   | string         | The property a GeoJSON feature's time is in. Without one, every feature is shown at every moment                                             |                               |
-| `source`          | string         | The `source` attribute of the geo_location entities to show, such as `blitzortung`                                                           | every geo_location entity     |
-| `time_attribute`  | string         | The attribute a geo_location entity's time is in                                                                                             | `publication_date`            |
-| `visible_minutes` | number         | How long a GeoJSON feature or a geo_location entity stays on the map after its time                                                          | `30`                          |
-| `timeline_marks`  | bool           | A mark above the timeline for each GeoJSON feature or geo_location entity with a time                                                        | `false`                       |
-| `color`           | string         | A hex colour, such as `#ffc107`, for the points, lines and areas that name none of their own                                                 | the theme's primary colour    |
+| Name              | Type           | Description                                                                                                                                                                                                                     | Default                       |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `type`            | string         | `wms`, `wmts`, `xyz`, `rainviewer`, `geojson` or `geo_location`                                                                                                                                                                 | `required`                    |
+| `url`             | string         | The source's address, as its type describes below. Not for `geo_location`                                                                                                                                                       | `required`                    |
+| `layer`           | string         | A WMS or WMTS layer's name, required for them. For `rainviewer`, `radar` or `satellite`                                                                                                                                         | `radar` for `rainviewer`      |
+| `name`            | string         | The name on the source's chip below the map                                                                                                                                                                                     | its layer or its type         |
+| `icon`            | string         | An icon for its chip, and for its points on the map. Points without one are dots                                                                                                                                                |                               |
+| `style`           | string         | A WMS or WMTS style the server offers                                                                                                                                                                                           | the server's first or default |
+| `color_scheme`    | number         | A RainViewer API's colour scheme, by its number                                                                                                                                                                                 | the server's first            |
+| `history_minutes` | number         | How far back the source goes                                                                                                                                                                                                    | `120`                         |
+| `opacity`         | number         | How opaque its frames are, above 0 and up to 1                                                                                                                                                                                  | `1`                           |
+| `max_zoom`        | number         | The closest zoom the server has pictures for. Closer than this, the card enlarges them. A WMTS server says this itself                                                                                                          |                               |
+| `step_minutes`    | number         | An XYZ source's step, a GeoJSON source's interval between reads, and a WMS or WMTS source's step when its server gives its times without one. For GeoJSON and geo_location, also the timeline's step when no image source is on | `5`                           |
+| `delay_minutes`   | number         | How far behind now an XYZ source's newest picture is                                                                                                                                                                            | `0`                           |
+| `stale_steps`     | number         | How many of its steps a source may go without a new frame before its chip warns                                                                                                                                                 | `3`                           |
+| `legend`          | string or bool | A legend image of your own, or `false` for none. A WMS or WMTS source shows its server's legend unless set                                                                                                                      |                               |
+| `attribution`     | string         | Credits of your own, shown behind the map's info button. A WMS or WMTS source shows what its server gives unless set                                                                                                            |                               |
+| `time_property`   | string         | The property a GeoJSON feature's time is in. Without one, every feature is shown at every moment                                                                                                                                |                               |
+| `source`          | string         | The `source` attribute of the geo_location entities to show, such as `blitzortung`                                                                                                                                              | every geo_location entity     |
+| `time_attribute`  | string         | The attribute a geo_location entity's time is in                                                                                                                                                                                | `publication_date`            |
+| `visible_minutes` | number         | How long a GeoJSON feature or a geo_location entity stays on the map after its time                                                                                                                                             | `30`                          |
+| `timeline_marks`  | bool           | A mark above the timeline for each GeoJSON feature or geo_location entity with a time                                                                                                                                           | `false`                       |
+| `color`           | string         | A hex colour, such as `#ffc107`, for the points, lines and areas that name none of their own                                                                                                                                    | the theme's primary colour    |
 
 ## What it shows
 
-**Live**, the card's default, each source shows its newest frame, and the chips below the map say how old each one is.
+**Live**, the card's default, each source shows its newest frame, and the chips at the bottom of the map say how old
+each one is.
 A chip warns when its source's newest frame hasn't changed for `stale_steps` of its steps while the card was open, and
 says when a source can't be read and why. Tap a chip to switch its layer off and on. The buttons on the map open the
 legends of the layers that are on, when they have one, switch between home and the whole region, and open the credits.
@@ -99,7 +100,7 @@ legends of the layers that are on, when they have one, switch between home and t
 **Playing**, every source that is on plays on one timeline at the shortest step among them, never under a minute. The
 handles on the timeline set the window that is played, from the last hour through all the forecast unless moved, and
 the timeline can be scrubbed by hand. The part of the timeline ahead of now is the forecast, striped, and while the
-time played is in it, the time turns the forecast's colour with how far ahead it is. In the forecast only the sources
+time played is in it, the time turns the forecast's colour and says how far ahead it is. In the forecast only the sources
 with frames ahead are shown, so an observation is never shown under another source's forecast as if both were of the
 same moment. Playing never returns to live by itself. The Now button does.
 
@@ -228,74 +229,6 @@ os.replace(TARGET + ".tmp", TARGET)
   visible_minutes: 60
 ```
 
-## Examples
-
-Finland's radar with an hour of forecast and Blitzortung's lightning, which is what the gallery shows with made-up data:
-
-```yaml
-type: custom:map-timeline-card
-sources:
-  - type: wms
-    name: Radar
-    icon: mdi:weather-pouring
-    url: https://openwms.fmi.fi/geoserver/wms
-    layer: Radar:suomi_dbz_eureffin
-  - type: rainviewer
-    name: Forecast
-    icon: mdi:weather-cloudy-clock
-    url: https://api.librewxr.net
-  - type: geo_location
-    name: Lightning
-    icon: mdi:flash
-    source: blitzortung
-    timeline_marks: true
-    color: "#ffc107"
-```
-
-Clouds under the radar, the clouds drawn lowest as they come first:
-
-```yaml
-type: custom:map-timeline-card
-zoom: 6
-sources:
-  - type: wms
-    name: Clouds
-    icon: mdi:weather-cloudy
-    url: https://view.eumetsat.int/geoserver/wms
-    layer: mtg_fd:ir105_hrfi
-    opacity: 0.6
-    attribution: Contains modified EUMETSAT Meteosat data
-  - type: wms
-    name: Radar
-    icon: mdi:weather-pouring
-    url: https://openwms.fmi.fi/geoserver/wms
-    layer: Radar:suomi_dbz_eureffin
-```
-
-The radar of the United States over the infrared from space, with the past day's earthquakes:
-
-```yaml
-type: custom:map-timeline-card
-region_zoom: 3
-sources:
-  - type: wmts
-    name: Infrared
-    url: https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml
-    layer: GOES-East_ABI_Band13_Clean_Infrared
-    opacity: 0.6
-    stale_steps: 9
-  - type: xyz
-    name: Radar
-    url: https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::USCOMP-N0Q-{time:YYYYMMDDHHmm}/{z}/{x}/{y}.png
-  - type: geojson
-    name: Earthquakes
-    icon: mdi:pulse
-    url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson
-    time_property: time
-    visible_minutes: 1440
-    history_minutes: 1440
-```
-
 ## A radar server of your own
 
 The public LibreWXR server is a best-effort service, and it blends the radar into weather models, so an hour ahead its
@@ -365,6 +298,74 @@ which also lets the card read it away from home. The server allows any origin by
 
 Without `color_scheme`, the card takes the first scheme the server lists, which on LibreWXR is black and white.
 OPERA's composites are under CC BY 4.0, so credit EUMETNET.
+
+## Examples
+
+Finland's radar with an hour of forecast and Blitzortung's lightning, which is what the gallery shows with made-up data:
+
+```yaml
+type: custom:map-timeline-card
+sources:
+  - type: wms
+    name: Radar
+    icon: mdi:weather-pouring
+    url: https://openwms.fmi.fi/geoserver/wms
+    layer: Radar:suomi_dbz_eureffin
+  - type: rainviewer
+    name: Forecast
+    icon: mdi:weather-cloudy-clock
+    url: https://api.librewxr.net
+  - type: geo_location
+    name: Lightning
+    icon: mdi:flash
+    source: blitzortung
+    timeline_marks: true
+    color: "#ffc107"
+```
+
+Clouds under the radar, the clouds drawn lowest as they come first:
+
+```yaml
+type: custom:map-timeline-card
+zoom: 6
+sources:
+  - type: wms
+    name: Clouds
+    icon: mdi:weather-cloudy
+    url: https://view.eumetsat.int/geoserver/wms
+    layer: mtg_fd:ir105_hrfi
+    opacity: 0.6
+    attribution: Contains modified EUMETSAT Meteosat data
+  - type: wms
+    name: Radar
+    icon: mdi:weather-pouring
+    url: https://openwms.fmi.fi/geoserver/wms
+    layer: Radar:suomi_dbz_eureffin
+```
+
+The radar of the United States over the infrared from space, with the past day's earthquakes:
+
+```yaml
+type: custom:map-timeline-card
+region_zoom: 3
+sources:
+  - type: wmts
+    name: Infrared
+    url: https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml
+    layer: GOES-East_ABI_Band13_Clean_Infrared
+    opacity: 0.6
+    stale_steps: 9
+  - type: xyz
+    name: Radar
+    url: https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::USCOMP-N0Q-{time:YYYYMMDDHHmm}/{z}/{x}/{y}.png
+  - type: geojson
+    name: Earthquakes
+    icon: mdi:pulse
+    url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson
+    time_property: time
+    visible_minutes: 1440
+    history_minutes: 1440
+```
 
 ## Data
 

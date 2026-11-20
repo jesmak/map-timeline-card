@@ -7,7 +7,7 @@ import type { Feature, Geometry } from "geojson";
 import type { GeoEvent } from "./geolocation";
 import { parseTime } from "./time";
 
-export interface Shape {
+interface Shape {
     /** In seconds, or null without one. */
     time: number | null;
     feature: Feature;

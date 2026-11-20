@@ -759,7 +759,7 @@ var en_default = {
     invalid_zone: `Invalid zone. "{value}" isn't a zone such as zone.home.`,
     invalid_zoom: "Invalid zoom. {name} must be a number from 0 to {max}.",
     invalid_map_style: "Invalid map style. map_style must be one of {values}.",
-    invalid_map_height: "Invalid height. map_height must be a number of pixels, at least 200.",
+    invalid_map_height: "Invalid height. map_height must be a number of pixels, at least 260.",
     invalid_speed: "Invalid speed. speed must be the minutes played in a second, greater than 0.",
     invalid_type: "Invalid source {n}. type must be one of {values}.",
     invalid_url: "Invalid source {n}. url must be the address of its service, starting with https:// or http://.",
@@ -875,8 +875,10 @@ var en_default = {
     max_zoom_helper: "How close a zoom the server offers pictures for. Closer than this, the card enlarges the closest pictures it has. Leave it empty if the map doesn't go blank when zoomed in. A WMTS server says its closest level itself.",
     step_minutes: "Step size",
     step_minutes_wms_helper: "Used when the server doesn't set its step size itself.",
+    step_minutes_wmts_helper: "Used when the server doesn't set its step size itself.",
     step_minutes_xyz_helper: "How often the server's picture is updated.",
-    step_minutes_geojson_helper: "How often the data is updated.",
+    step_minutes_geojson_helper: "How often the data is updated. Also the timeline's step when no picture layer is on.",
+    step_minutes_geo_location_helper: "The timeline's step when no picture layer is on.",
     stale_steps: "Warn when no new picture has come in this many steps",
     delay_minutes: "Delay",
     delay_minutes_helper: "How far behind now the newest picture is.",
@@ -909,7 +911,7 @@ var fi_default = {
     invalid_zone: 'Virheellinen vy\xF6hyke. "{value}" ei ole vy\xF6hyke, kuten zone.home.',
     invalid_zoom: "Virheellinen zoomaus. {name} on luku 0\u2013{max}.",
     invalid_map_style: "Virheellinen kartan tyyli. map_style on jokin n\xE4ist\xE4 {values}.",
-    invalid_map_height: "Virheellinen korkeus. map_height on pikselein\xE4, v\xE4hint\xE4\xE4n 200.",
+    invalid_map_height: "Virheellinen korkeus. map_height on pikselein\xE4, v\xE4hint\xE4\xE4n 260.",
     invalid_speed: "Virheellinen nopeus. speed on sekunnissa toistettavat minuutit, enemm\xE4n kuin 0.",
     invalid_type: "Virheellinen l\xE4hde {n}. type on jokin n\xE4ist\xE4 {values}.",
     invalid_url: "Virheellinen l\xE4hde {n}. url on palvelun osoite, joka alkaa https:// tai http://.",
@@ -1025,8 +1027,10 @@ var fi_default = {
     max_zoom_helper: "Kuinka tarkalle zoomaukselle palvelin tarjoaa kuvia. T\xE4t\xE4 l\xE4hemp\xE4n\xE4 kortti suurentaa tarkimmat saatavilla olevat kuvat. J\xE4t\xE4 tyhj\xE4ksi, jos kartta ei tyhjene l\xE4helle zoomatessa. WMTS-palvelin kertoo tarkimman tason itse.",
     step_minutes: "Askelkoko",
     step_minutes_wms_helper: "T\xE4t\xE4 k\xE4ytet\xE4\xE4n, jos palvelin ei itse m\xE4\xE4rittele askelkokoa.",
+    step_minutes_wmts_helper: "T\xE4t\xE4 k\xE4ytet\xE4\xE4n, jos palvelin ei itse m\xE4\xE4rittele askelkokoa.",
     step_minutes_xyz_helper: "Kuinka usein palvelimen kuva p\xE4ivittyy.",
-    step_minutes_geojson_helper: "Kuinka usein tiedot p\xE4ivitet\xE4\xE4n.",
+    step_minutes_geojson_helper: "Kuinka usein tiedot p\xE4ivitet\xE4\xE4n. My\xF6s aikajanan askel, kun yksik\xE4\xE4n kuvataso ei ole p\xE4\xE4ll\xE4.",
+    step_minutes_geo_location_helper: "Aikajanan askel, kun yksik\xE4\xE4n kuvataso ei ole p\xE4\xE4ll\xE4.",
     stale_steps: "Varoitus, kun uutta kuvaa ei ole tullut n\xE4in monen askelen aikana",
     delay_minutes: "Viive",
     delay_minutes_helper: "Kuinka paljon uusin kuva on j\xE4ljess\xE4 nykyhetkest\xE4.",
@@ -1107,6 +1111,7 @@ function isFeatureSource(type) {
 }
 var RAINVIEWER_LAYERS = ["radar", "satellite"];
 var DEFAULT_MAP_HEIGHT = 440;
+var MIN_MAP_HEIGHT = 260;
 var DEFAULT_ZOOM = 8;
 var DEFAULT_REGION_ZOOM = 5;
 var MAX_ZOOM = 18;
@@ -1119,7 +1124,7 @@ var DEFAULT_TIME_ATTRIBUTE = "publication_date";
 var ENTITY_ID = /^[a-z_]+\.[a-z0-9_]+$/;
 function invalid(key, values = {}) {
   const text3 = translate(browserLanguage(), `config.invalid_${key}`);
-  return new Error(text3.replace(/\{(\w+)\}/g, (_3, name) => String(values[name] ?? "")));
+  return new Error(text3.replace(/\{(\w+)\}/g, (match, name) => name in values ? String(values[name]) : match));
 }
 function parseOptions(raw) {
   const config = isRecord(raw) ? raw : {};
@@ -1129,7 +1134,7 @@ function parseOptions(raw) {
     zoom: parseZoom(config.zoom, DEFAULT_ZOOM, "zoom"),
     regionZoom: parseZoom(config.region_zoom, DEFAULT_REGION_ZOOM, "region_zoom"),
     mapStyle: parseChoice(config.map_style, MAP_STYLES, "default", "map_style"),
-    mapHeight: parseNumber(config.map_height, DEFAULT_MAP_HEIGHT, (value) => value >= 200, "map_height"),
+    mapHeight: parseNumber(config.map_height, DEFAULT_MAP_HEIGHT, (value) => value >= MIN_MAP_HEIGHT, "map_height"),
     speed: parseNumber(config.speed, DEFAULT_SPEED, (value) => value > 0, "speed"),
     sources: config.sources.map((entry, index) => parseSource(isRecord(entry) ? entry : {}, index))
   };
@@ -1390,6 +1395,16 @@ function buildTimeline(sources) {
 function featureSpan(now, history, times) {
   return [now - history, Math.max(now, ...times)];
 }
+function sourcesTimeline(images, features, now) {
+  const spans = features.map((source) => ({
+    frames: featureSpan(now, source.history, source.times),
+    step: images.length ? Infinity : source.step
+  }));
+  return buildTimeline([...images, ...spans]);
+}
+function isStale(advancedAt, now, staleSteps, step2) {
+  return now - advancedAt > staleSteps * step2;
+}
 function defaultWindow(timeline, now) {
   const last = timeline.times.length - 1;
   const start = timeline.times.findIndex((time) => time >= now - 3600);
@@ -1590,7 +1605,7 @@ var SOURCE_FIELDS = {
   },
   wmts: {
     main: ["url", "layer", "style"],
-    advanced: ["history_minutes", "opacity", "max_zoom", "stale_steps", "show_legend", "legend", "attribution"]
+    advanced: ["history_minutes", "opacity", "max_zoom", "step_minutes", "stale_steps", "show_legend", "legend", "attribution"]
   },
   xyz: { main: ["url", "step_minutes", "delay_minutes"], advanced: ["history_minutes", "opacity", "max_zoom", "legend", "attribution"] },
   rainviewer: {
@@ -1603,7 +1618,7 @@ var SOURCE_FIELDS = {
   },
   geo_location: {
     main: ["source", "visible_minutes", "timeline_marks", "color"],
-    advanced: ["history_minutes", "time_attribute", "attribution"]
+    advanced: ["history_minutes", "step_minutes", "time_attribute", "attribution"]
   }
 };
 var TYPE_ICONS = {
@@ -1752,7 +1767,10 @@ var MapTimelineCardEditor = class extends i4 {
         schema: [
           { name: "zoom", selector: { number: { min: 0, max: MAX_ZOOM, step: 0.5, mode: "box" } } },
           { name: "region_zoom", selector: { number: { min: 0, max: MAX_ZOOM, step: 0.5, mode: "box" } } },
-          { name: "map_height", selector: { number: { min: 200, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } } },
+          {
+            name: "map_height",
+            selector: { number: { min: MIN_MAP_HEIGHT, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } }
+          },
           { name: "speed", selector: { number: { min: 1, max: 120, step: 1, mode: "box", unit_of_measurement: "min/s" } } }
         ]
       },
@@ -34156,6 +34174,28 @@ function record2(value) {
 }
 
 // src/sources.ts
+function advanced(before, loaded) {
+  const newest = (source) => source?.kind === "images" ? source.frames[source.frames.length - 1] : void 0;
+  return !before || newest(before) !== newest(loaded);
+}
+function readKey(sources) {
+  return JSON.stringify(
+    sources.map((s5) => [
+      s5.type,
+      s5.url,
+      s5.layer,
+      s5.style,
+      s5.colorScheme,
+      s5.maxZoom,
+      s5.historyMinutes,
+      s5.stepMinutes,
+      s5.delayMinutes,
+      s5.timeProperty,
+      s5.legend,
+      s5.attribution
+    ])
+  );
+}
 async function loadSource(options, now) {
   switch (options.type) {
     case "wmts":
@@ -34264,7 +34304,6 @@ async function fetchText(url, cache = "default") {
 // src/map-timeline-card.ts
 var DEFAULT_PRIMARY = "#03a9f4";
 var BORDER_PX = 2;
-var MIN_HEIGHT_PX = 260;
 var TICK_MS = 3e4;
 var RETRY_S = 60;
 console.info(
@@ -34371,7 +34410,7 @@ var MapTimelineCard = class extends i4 {
     this.config = { grid_options, layout_options, row_step };
     const previous = this.options;
     this.options = options;
-    const key = JSON.stringify(options.sources);
+    const key = readKey(options.sources);
     if (key !== this.sourcesKey) {
       this.sourcesKey = key;
       this.stopSources();
@@ -34391,7 +34430,7 @@ var MapTimelineCard = class extends i4 {
     return Math.ceil((this.options?.mapHeight ?? 440) / 50);
   }
   getGridOptions() {
-    return { columns: "full", min_columns: 6, rows: "auto", min_rows: gridMinRows(MIN_HEIGHT_PX) };
+    return { columns: "full", min_columns: 6, rows: "auto", min_rows: gridMinRows(MIN_MAP_HEIGHT) };
   }
   connectedCallback() {
     super.connectedCallback();
@@ -34415,8 +34454,8 @@ var MapTimelineCard = class extends i4 {
   render() {
     if (!this.options || !this.hass) return A;
     const legends = this.options.sources.map((source, i7) => ({ name: source.name, legend: this.enabled[i7] ? this.sources[i7]?.loaded?.legend : null })).filter((entry) => entry.legend);
-    const fill2 = fillLimit(this.config, this.layout, MIN_HEIGHT_PX) ? filledHeight(this.options.mapHeight + BORDER_PX, this.config) : 0;
-    const held = filledStyle(this.config, this.layout, MIN_HEIGHT_PX, fill2);
+    const fill2 = fillLimit(this.config, this.layout, MIN_MAP_HEIGHT) ? filledHeight(this.options.mapHeight + BORDER_PX, this.config) : 0;
+    const held = filledStyle(this.config, this.layout, MIN_MAP_HEIGHT, fill2);
     return b2`
             <ha-card style="--map-height:${this.options.mapHeight}px;${held}">
                 <div class="map"></div>
@@ -34533,10 +34572,9 @@ var MapTimelineCard = class extends i4 {
             note = this.text("chip.only_ahead");
           } else {
             note = this.age(now - newest);
-            const quiet = Date.now() - state.advancedAt;
-            if (quiet > source.staleSteps * loaded.step * 1e3) {
+            if (isStale(state.advancedAt / 1e3, now, source.staleSteps, loaded.step)) {
               warn = true;
-              title = this.text("chip.stale", { age: this.age(quiet / 1e3) });
+              title = this.text("chip.stale", { age: this.age(now - state.advancedAt / 1e3) });
             }
           }
         }
@@ -34567,16 +34605,10 @@ var MapTimelineCard = class extends i4 {
   /** The timeline over the sources that are on and have been read. */
   timeline() {
     const images = this.sources.flatMap((source, i7) => this.enabled[i7] && source.loaded?.kind === "images" ? [source.loaded] : []);
-    const now = Date.now() / 1e3;
-    const points = this.options.sources.flatMap(
-      (source, i7) => this.enabled[i7] && timed(source) ? [
-        {
-          frames: featureSpan(now, source.historyMinutes * 60, this.featureTimes(i7)),
-          step: images.length ? Infinity : source.stepMinutes * 60
-        }
-      ] : []
+    const features = this.options.sources.flatMap(
+      (source, i7) => this.enabled[i7] && timed(source) ? [{ history: source.historyMinutes * 60, step: source.stepMinutes * 60, times: this.featureTimes(i7) }] : []
     );
-    return buildTimeline([...images, ...points]);
+    return sourcesTimeline(images, features, Date.now() / 1e3);
   }
   /** Puts on the map what the card shows now: each source's newest frame live, or its frame at the time played. */
   draw() {
@@ -34686,11 +34718,9 @@ var MapTimelineCard = class extends i4 {
       const loaded = await loadSource(options, Date.now() / 1e3);
       if (key !== this.sourcesKey) return;
       const step2 = this.timeline()?.step;
-      const before = this.sources[i7];
-      const newest = (source) => source?.kind === "images" ? source.frames[source.frames.length - 1] : void 0;
-      const advanced = !before.loaded || newest(before.loaded) !== newest(loaded);
+      const moved = advanced(this.sources[i7].loaded, loaded);
       this.sources = this.sources.map(
-        (source, j2) => j2 === i7 ? { ...source, loaded, error: "", advancedAt: advanced ? Date.now() : source.advancedAt } : source
+        (source, j2) => j2 === i7 ? { ...source, loaded, error: "", advancedAt: moved ? Date.now() : source.advancedAt } : source
       );
       this.updatedAt = Date.now();
       next = Math.max(MIN_STEP, loaded.step);
